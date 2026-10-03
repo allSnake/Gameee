@@ -19,34 +19,58 @@
   canvas { display: block; }
   .panel { position: fixed; background: var(--panel); border: 1px solid rgba(255,255,255,.08);
     border-radius: 12px; padding: 12px 14px; backdrop-filter: blur(6px); }
-  #toolbar { left: 12px; top: 12px; display: flex; flex-direction: column; gap: 6px; }
-  #toolbar h1 { margin: 0 0 4px; font-size: 15px; letter-spacing: .04em; color: var(--accent); }
-  .tool { all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px;
-    padding: 7px 10px; border-radius: 8px; font-size: 14px; border: 1px solid transparent; }
+
+  #toolbar { left: 12px; top: 12px; bottom: 12px; width: 206px; display: flex; flex-direction: column; gap: 6px; }
+  #toolbar h1 { margin: 0 0 2px; font-size: 15px; letter-spacing: .04em; color: var(--accent); }
+  #tools { overflow-y: auto; flex: 1; margin: 0 -6px; padding: 0 6px; }
+  .group { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 10px 0 3px 4px; }
+  .tool { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 8px; font-size: 14px; border: 1px solid transparent; }
   .tool:hover { background: rgba(255,255,255,.07); }
   .tool.active { border-color: var(--accent); background: rgba(255,183,3,.12); }
   .tool kbd { margin-left: auto; font-size: 11px; color: var(--muted); border: 1px solid rgba(255,255,255,.15);
     border-radius: 4px; padding: 0 5px; }
-  .tool .dot { width: 12px; height: 12px; border-radius: 3px; flex: none; }
-  .sep { height: 1px; background: rgba(255,255,255,.1); margin: 4px 0; }
-  .btn { all: unset; cursor: pointer; text-align: center; padding: 7px 10px; border-radius: 8px;
+  .dot { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  .row { display: flex; gap: 6px; }
+  .btn { all: unset; box-sizing: border-box; flex: 1; cursor: pointer; text-align: center; padding: 7px 8px; border-radius: 8px;
     font-size: 13px; background: rgba(142,202,230,.15); color: var(--accent-2); }
   .btn:hover { background: rgba(142,202,230,.28); }
-  #goal { right: 12px; top: 12px; width: 230px; }
-  #goal h2 { margin: 0 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-  #goal .big { font-size: 28px; font-weight: 700; }
-  #bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); margin-top: 8px; overflow: hidden; }
+  .btn.active { background: rgba(255,183,3,.2); color: var(--accent); }
+
+  #chapters { left: 50%; transform: translateX(-50%); top: 12px; display: flex; gap: 6px; padding: 6px; }
+  .chap { all: unset; cursor: pointer; padding: 7px 14px; border-radius: 8px; font-size: 14px; }
+  .chap:hover { background: rgba(255,255,255,.07); }
+  .chap.active { background: rgba(255,183,3,.18); color: var(--accent); }
+
+  #goal { right: 12px; top: 12px; width: 240px; }
+  #goal h2 { margin: 0 0 8px; font-size: 14px; color: var(--accent); }
+  #goal ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  #goal li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  #goal li .pn { flex: 1; }
+  #goal li .pc { color: var(--muted); font-variant-numeric: tabular-nums; }
+  #goal li.ok .pc, #goal li.ok .pn { color: #7bdc8e; }
+  #bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); margin-top: 10px; overflow: hidden; }
   #bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s; }
-  #goal p { margin: 10px 0 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
-  #hint { left: 50%; transform: translateX(-50%); bottom: 12px; font-size: 13px; color: var(--muted); text-align: center; max-width: 92vw; }
+  .meta { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted); }
+  #time { font-variant-numeric: tabular-nums; }
+
+  #info { left: 230px; bottom: 12px; font-size: 13px; line-height: 1.5; min-width: 220px; max-width: 300px; }
+  #info:empty { display: none; }
+  #info b { color: var(--accent); }
+  #hint { right: 12px; bottom: 12px; font-size: 12px; color: var(--muted); line-height: 1.6; max-width: 300px; }
   #hint b { color: var(--text); }
-  #toast { left: 50%; top: 18%; transform: translate(-50%, 0); font-size: 22px; font-weight: 700;
+  #speedbox { left: 50%; transform: translateX(-50%); bottom: 12px; display: flex; gap: 6px; align-items: center; padding: 8px; }
+  #speedbox span { font-size: 12px; color: var(--muted); margin: 0 4px; }
+  #speedbox .btn { flex: none; padding: 5px 10px; }
+  #toast { left: 50%; top: 14%; transform: translate(-50%, 0); font-size: 20px; font-weight: 700;
     color: var(--accent); text-align: center; opacity: 0; pointer-events: none; transition: opacity .4s; }
   #toast.show { opacity: 1; }
-  @media (max-width: 640px) {
-    #goal { width: 160px; }
-    #goal .big { font-size: 22px; }
+  @media (max-width: 760px) {
+    #toolbar { width: 160px; }
+    #info, #hint { display: none; }
+    #goal { width: 190px; }
     .tool kbd { display: none; }
+    #chapters { top: auto; bottom: 12px; }
   }
 </style>
 </head>
@@ -54,20 +78,26 @@
 <div id="toolbar" class="panel">
   <h1>ABSURD INDUSTRIES</h1>
   <div id="tools"></div>
-  <div class="sep"></div>
-  <button class="btn" id="demo">Demo-Fabrik laden</button>
-  <button class="btn" id="clear">Alles abreißen</button>
+  <div class="row"><button class="btn" id="demo">Demo-Fabrik</button><button class="btn" id="clear">Abreißen</button></div>
+  <div class="row"><button class="btn" id="mute">Ton an</button></div>
 </div>
+<div id="chapters" class="panel"></div>
 <div id="goal" class="panel">
-  <h2>Kapitel 1 · Sandwich</h2>
-  <div class="big"><span id="count">0</span> / <span id="target">8</span></div>
-  <div>Teil 1: Brot</div>
+  <h2 id="goal-title"></h2>
+  <ul id="parts"></ul>
   <div id="bar"><i></i></div>
-  <p>Liefere 8 Brot an die Endmontage. Jedes Brot wird zu einer Schicht im Sandwich.</p>
+  <div class="meta"><span>Zeit <b id="time">0:00</b></span><span id="surplus"></span></div>
 </div>
+<div id="speedbox" class="panel">
+  <span>Tempo</span>
+  <button class="btn speed active" data-speed="1">1×</button>
+  <button class="btn speed" data-speed="2">2×</button>
+  <button class="btn speed" data-speed="4">4×</button>
+</div>
+<div id="info" class="panel"></div>
 <div id="hint" class="panel">
-  <b>Linksklick</b> bauen (Förderband: ziehen) · <b>R</b> drehen · <b>Shift+Klick</b> abreißen ·
-  <b>Rechte Maustaste</b> Kamera drehen · <b>Mausrad</b> Zoom
+  <b>Linksklick</b> bauen (Bänder: ziehen) · <b>R</b> drehen · <b>Shift+Klick</b> abreißen<br>
+  <b>Rechte Maustaste</b> Kamera · <b>WASD</b> verschieben · <b>Mausrad</b> Zoom
 </div>
 <div id="toast" class="panel"></div>
 <script type="importmap">
