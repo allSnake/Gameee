@@ -5,16 +5,19 @@ import { Factory, DIRS, isCarrier, isMachine, isSource } from './sim.js';
 import { planChapter } from './layout.js';
 import { mat, part, makeItem, makeBuilding, makeEndProject } from './models.js';
 import { sfx } from './audio.js';
+import { thumb } from './thumbs.js';
 
 // ================================================================ Szene
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1b2430);
+// Minimalistischer Look: heller, matter Boden, weiche Schatten, Nebel am Horizont
+scene.background = new THREE.Color(0xdde3e9);
 const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 400);
 
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -23,8 +26,8 @@ controls.maxPolarAngle = Math.PI / 2.1;
 controls.minDistance = 5;
 controls.enableDamping = true;
 
-scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x2a3140, 1.1));
-const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a96a3, 1.5));
+const sun = new THREE.DirectionalLight(0xfff6ea, 1.9);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 scene.add(sun);
@@ -41,12 +44,13 @@ const cellPos = (x, z) => new THREE.Vector3(x - N / 2 + 0.5, 0, z - N / 2 + 0.5)
 function buildWorld(size) {
   N = size;
   if (ground) { scene.remove(ground, grid); ground.geometry.dispose(); grid.geometry.dispose(); }
-  ground = new THREE.Mesh(new THREE.BoxGeometry(N, 0.4, N), mat(0x33414f, { roughness: 0.95 }));
+  ground = new THREE.Mesh(new THREE.BoxGeometry(N, 0.4, N), mat(0xc9d1da, { roughness: 1 }));
   ground.position.y = -0.2;
   ground.receiveShadow = true;
-  grid = new THREE.GridHelper(N, N, 0x5b6c7e, 0x445364);
+  grid = new THREE.GridHelper(N, N, 0xb3bdc8, 0xbac4ce);
   grid.position.y = 0.01;
   scene.add(ground, grid);
+  scene.fog = new THREE.Fog(0xdde3e9, N * 1.8, N * 4 + 20);
   const s = N / 2 + 6;
   Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 1, far: N * 3 + 40 });
   sun.shadow.camera.updateProjectionMatrix();
@@ -386,9 +390,9 @@ function animate(dt, t) {
 const has = (kind) => factory.list.some(c => c.kind === kind);
 const made = (item) => (factory.produced[item] || 0) > 0;
 const TUTORIAL = [
-  { text: 'Wähle links unter <b>Quellen</b> das <b>Weizenfeld</b> und setze es aufs Spielfeld.', done: () => has('weizenfeld') },
+  { text: 'Wähle unten in der Bauleiste unter <b>Quellen</b> das <b>Weizenfeld</b> und setze es aufs Spielfeld.', done: () => has('weizenfeld') },
   { text: 'Wechsle zu <b>Maschinen</b> und baue eine <b>Mühle</b> ein paar Felder vor den weißen Pfeil des Weizenfelds.', done: () => has('muehle') },
-  { text: 'Verbinde Feld und Mühle mit <b>Förderbändern</b> (Tab <b>Logistik</b>): Maustaste halten und ziehen. <b>R</b> dreht vor dem Bauen.', done: () => made('mehl') },
+  { text: 'Verbinde Feld und Mühle mit <b>Förderbändern</b> (Kategorie <b>Logistik</b>): Maustaste halten und ziehen. <b>R</b> dreht vor dem Bauen.', done: () => made('mehl') },
   { text: 'Die Mühle mahlt Mehl. Leite es mit Bändern in einen <b>Ofen</b> – der backt daraus Bauernbrot.', done: () => made('brot') },
   { text: 'Baue die <b>Endmontage</b> (Logistik) und bring das Brot dorthin. Rechts auf dem Sockel wächst dein Butterbrot.', done: () => (progress.delivered.brot || 0) > 0 },
   { text: 'Jetzt die Butter: <b>Kuhweide</b> → <b>Butterfass</b> → Endmontage. Das Butterfass braucht 2 Milch pro Butter.', done: () => made('butter') },
@@ -415,6 +419,7 @@ function renderTutorial() {
 
 // ================================================================ Werkzeuge & Eingabe
 const TABS = [['logistik', 'Logistik'], ['quelle', 'Quellen'], ['maschine', 'Maschinen']];
+let search = '';
 let tab = 'logistik';
 let tool = 'belt';
 let buildDir = 0;
@@ -425,7 +430,11 @@ const pointer = new THREE.Vector2();
 const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const hit = new THREE.Vector3();
 
-const tabTools = () => content.buildings.filter(k => BUILDINGS[k].cat === tab);
+const tabTools = () => search
+  ? content.buildings.filter(k => bName(k).toLowerCase().includes(search) ||
+      (BUILDINGS[k].out && itemName(BUILDINGS[k].out).toLowerCase().includes(search)) ||
+      (content.byMachine[k] || []).some(r => itemName(r.out).toLowerCase().includes(search)))
+  : content.buildings.filter(k => BUILDINGS[k].cat === tab);
 
 function setTool(t) {
   tool = t;
@@ -508,7 +517,13 @@ canvas.addEventListener('contextmenu', ev => ev.preventDefault());
 const keys = new Set();
 addEventListener('keydown', ev => {
   const k = ev.key.toLowerCase();
+  if (ev.target instanceof HTMLInputElement) {
+    if (k === 'escape' || k === 'enter') { ev.target.blur(); if (ev.target.id === 'search' && k === 'enter' && tabTools()[0]) setTool(tabTools()[0]); }
+    return;
+  }
   if (k === 'escape') { overlayOpen ? closeOverlayIfAllowed() : showMenu(); return; }
+  if (k === '/' && !overlayOpen) { ev.preventDefault(); $('search').focus(); return; }
+  if (k === 'h' && !ev.repeat) { if (overlayKind === 'help') closeOverlay(); else if (!overlayOpen) showHelp(); return; }
   if (k === 'b' && !ev.repeat) { if (overlayKind === 'book') closeOverlay(); else if (!overlayOpen) showBook(); return; }
   if (k === 'u' && !ev.repeat) { if (overlayKind === 'shop') closeOverlay(); else if (!overlayOpen) showShop(); return; }
   if (k === 'p' && !ev.repeat) { if (overlayKind === 'stats') closeOverlay(); else if (!overlayOpen) showStats(); return; }
@@ -592,6 +607,7 @@ function renderStock() {
 
 function describeKind(kind) {
   if (kind === 'upgrade') return upgradeInfo();
+  if (kind === 'erase') return '<b>Abriss</b><br>Klicke oder ziehe über Gebäude, um sie zu entfernen. Du bekommst das Eisen zurück.';
   return describeKindBase(kind) + `<br><span class="st">Kosten: ${costOf(kind)} Eisen</span>`;
 }
 
@@ -646,38 +662,40 @@ function renderInfo() {
   else el.innerHTML = describeKind(tool);
 }
 
+function toolTile(kind, i, { label, icon, cls = '', cost = null } = {}) {
+  const b = document.createElement('button');
+  const isB = !!BUILDINGS[kind];
+  const c = cost ?? (isB ? costOf(kind) : null);
+  b.className = 'tool ' + cls + (kind === tool ? ' active' : '') + (c !== null && c > progress.eisen ? ' poor' : '');
+  if (isB) b.dataset.kind = kind;
+  const img = isB ? thumb(kind) : '';
+  b.innerHTML = (img ? `<img src="${img}" alt="">` : `<span class="ph">${icon || ''}</span>`) +
+    `<span class="nm">${label || bName(kind)}</span>` + (c !== null ? `<span class="cost">⛓ ${c}</span>` : '<span class="cost">&nbsp;</span>') +
+    (isB && content.isNew.has(kind) ? '<span class="new">NEU</span>' : '') + (i !== null && i < 9 ? `<kbd>${i + 1}</kbd>` : '');
+  b.addEventListener('click', () => setTool(kind));
+  b.addEventListener('mouseenter', () => { infoOverride = kind; renderInfo(); });
+  b.addEventListener('mouseleave', () => { infoOverride = null; renderInfo(); });
+  return b;
+}
+
 function renderToolbar() {
   infoOverride = null;
-  $('tabs').innerHTML = TABS.map(([id, label]) => `<button data-tab="${id}" class="${id === tab ? 'active' : ''}">${label}</button>`).join('');
-  $('tabs').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { tab = b.dataset.tab; renderToolbar(); }));
-  const el = $('tools');
+  const count = (cat) => content.buildings.filter(k => BUILDINGS[k].cat === cat).length;
+  $('cats').innerHTML = TABS.map(([id, label]) => `<button data-tab="${id}" class="cat ${id === tab && !search ? 'active' : ''}">${label}<span class="n">${count(id)}</span></button>`).join('');
+  $('cats').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { tab = b.dataset.tab; search = ''; $('search').value = ''; renderToolbar(); }));
+  const el = $('tiles');
   el.innerHTML = '';
-  tabTools().forEach((kind, i) => {
-    const b = document.createElement('button');
-    b.className = 'tool' + (kind === tool ? ' active' : '') + (costOf(kind) > progress.eisen ? ' poor' : '');
-    b.dataset.kind = kind;
-    b.innerHTML = `<span class="dot" style="background:${BUILDINGS[kind].color}"></span>${bName(kind)}` +
-      (content.isNew.has(kind) ? ' <span class="new">NEU</span>' : '') + `<span class="cost">${costOf(kind)}</span>` + (i < 9 ? `<kbd>${i + 1}</kbd>` : '');
-    b.addEventListener('click', () => setTool(kind));
-    b.addEventListener('mouseenter', () => { infoOverride = kind; renderInfo(); });
-    b.addEventListener('mouseleave', () => { infoOverride = null; renderInfo(); });
-    el.appendChild(b);
-  });
-  const e = document.createElement('button');
-  e.className = 'tool erase' + (tool === 'erase' ? ' active' : '');
-  e.innerHTML = '<span class="dot" style="background:#ff4040"></span>Abriss<kbd>0</kbd>';
-  e.addEventListener('click', () => setTool('erase'));
-  el.appendChild(e);
-  if (content.maxTier > 0) {
-    const u = document.createElement('button');
-    u.className = 'tool' + (tool === 'upgrade' ? ' active' : '');
-    u.innerHTML = '<span class="dot" style="background:#3fa9ff"></span>Aufrüsten<kbd>E</kbd>';
-    u.addEventListener('click', () => setTool('upgrade'));
-    u.addEventListener('mouseenter', () => { infoOverride = 'upgrade'; renderInfo(); });
-    u.addEventListener('mouseleave', () => { infoOverride = null; renderInfo(); });
-    el.appendChild(u);
-  }
+  const list = tabTools();
+  list.forEach((kind, i) => el.appendChild(toolTile(kind, i)));
+  if (!list.length) el.innerHTML = '<span class="sub" style="padding:18px 8px">Nichts gefunden.</span>';
+  el.appendChild(toolTile('erase', null, { label: 'Abriss  (0)', icon: '✖', cls: 'sep' }));
+  if (content.maxTier > 0) el.appendChild(toolTile('upgrade', null, { label: 'Aufrüsten (E)', icon: '⇧' }));
+  el.querySelectorAll('.ph').forEach((ph, i) => { ph.style.background = i === 0 ? 'rgba(255,64,64,.18)' : 'rgba(63,169,255,.18)'; ph.style.color = i === 0 ? '#ff8a7a' : '#8ecae6'; });
+  const act = el.querySelector('.tool.active');
+  if (act) act.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
+
+$('search').addEventListener('input', (ev) => { search = ev.target.value.trim().toLowerCase(); renderToolbar(); });
 
 function renderGoal() {
   $('goal-title').textContent = content.chapter.title;
@@ -734,9 +752,10 @@ function toast(msg, ms = 2200) {
 
 // ================================================================ Overlays
 let overlayKind = null;
-function openOverlay(kind, html) {
+function openOverlay(kind, html, cls = '') {
   overlayKind = kind;
   overlayOpen = true;
+  $('card').className = 'card ' + cls;
   $('card').innerHTML = html;
   $('overlay').classList.add('show');
   updateGhost();
@@ -750,7 +769,7 @@ function closeOverlayIfAllowed() {
   if (overlayKind === 'menu' && !chapterId) return;
   closeOverlay();
 }
-$('overlay').addEventListener('click', ev => { if (ev.target === $('overlay') && overlayKind === 'book') closeOverlay(); });
+$('overlay').addEventListener('click', ev => { if (ev.target === $('overlay') && ['book', 'help', 'stats', 'shop'].includes(overlayKind)) closeOverlay(); });
 const bind = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', fn); };
 
 function isUnlocked(id) {
@@ -761,34 +780,45 @@ function isUnlocked(id) {
   return !!meta.completed[CAMPAIGN[0]]; // Bonus: nach dem ersten Kapitel
 }
 
+const ERA_ICONS = ['🔨', '🏭', '⚡', '🧪'];
+let menuSel = null;
+
 function showMenu() {
-  const card = (id, i) => {
+  const bonus = Object.keys(CHAPTERS).filter(id => CHAPTERS[id].bonus);
+  if (!menuSel || !CHAPTERS[menuSel]) menuSel = chapterId || CAMPAIGN[0];
+  const node = (id) => {
     const ch = CHAPTERS[id];
     const rec = meta.completed[id];
     const open = isUnlocked(id);
-    const label = ch.bonus ? 'Bonus' : `Kapitel ${i + 1}`;
-    const foot = rec ? `<span>${starHTML(rec.stars)}</span><span>${rec.best !== null ? 'Bestzeit ' + fmtTime(rec.best) : 'Demo'}</span>`
-      : `<span>${open ? 'Neu' : '🔒 ' + (ch.bonus ? 'nach Kapitel 1' : 'erst vorheriges Kapitel')}</span><span></span>`;
-    return `<button class="chapter${open ? '' : ' locked'}" data-ch="${id}" ${open ? '' : 'disabled'}>
-      <span class="num">${label}${id === chapterId ? ' · aktuell' : ''}</span><span class="name">${ch.title.replace('Bonus: ', '')}</span>
-      <span class="desc">${ch.story}</span><span class="foot">${foot}</span></button>`;
+    const num = ch.bonus ? '★' : CAMPAIGN.indexOf(id) + 1;
+    return `<button class="node${open ? '' : ' locked'}${rec ? ' done' : ''}${id === menuSel ? ' sel' : ''}" data-ch="${id}">
+      <span class="num">${open ? num : '🔒'}</span>
+      <span><span class="tt">${ch.short.replace('Bonus: ', '')}</span><br><span class="ss">${rec ? starHTML(rec.stars) : open ? '<span class="sub">neu</span>' : '<span class="sub">gesperrt</span>'}</span></span></button>`;
   };
-  const cards = ERAS.map((era, e) => `<h3 class="era">Epoche ${e + 1} · ${era.name}</h3><p class="sub">${era.intro}</p>
-      <div class="chapters">${era.chapters.map(id => card(id, CAMPAIGN.indexOf(id))).join('')}</div>`).join('') +
-    `<h3 class="era">Bonus</h3><div class="chapters">${Object.keys(CHAPTERS).filter(id => CHAPTERS[id].bonus).map(id => card(id, 0)).join('')}</div>`;
+  const cols = ERAS.map((era, e) => `<div class="era-col"><span class="ei">${ERA_ICONS[e]}</span><span class="en">Epoche ${e + 1}</span>
+      <span class="et">${era.name}</span>${era.chapters.map(node).join('')}</div>`).join('');
+  const total = Object.values(meta.completed).reduce((sum, r) => sum + (r.stars || 0), 0);
   openOverlay('menu', `
-    <p class="logo">ABSURD INDUSTRIES</p>
-    <p class="sub">Das Sandwich-Imperium – vollautomatische Fabriken für völlig unnötige Sandwiches.</p>
-    ${cards}
-    <div class="actions" style="justify-content:space-between;align-items:center">
-      <button class="linkish" id="reset-all">Gesamten Fortschritt löschen</button>
-      ${chapterId ? '<button class="btn primary" id="menu-back">Weiterspielen</button>' : ''}
-    </div>`);
-  $('card').querySelectorAll('.chapter:not(.locked)').forEach(b => b.addEventListener('click', () => {
-    closeOverlay();
-    if (b.dataset.ch !== chapterId) loadChapter(b.dataset.ch);
-    else if (!progress.started) showIntro();
-  }));
+    <div class="menu-main">
+      <p class="logo">ABSURD INDUSTRIES</p>
+      <p class="sub">Das Sandwich-Imperium – vom Handwerk bis zum Chemielabor · <span class="stars">★</span> ${total} Sterne gesammelt</p>
+      <div class="timeline">${cols}</div>
+      <h3 class="era" style="margin-top:18px">Bonus</h3><div style="display:flex;gap:8px">${bonus.map(node).join('')}</div>
+      <div class="actions" style="justify-content:space-between;align-items:center">
+        <button class="linkish" id="reset-all">Gesamten Fortschritt löschen</button>
+        ${chapterId ? '<button class="btn" id="menu-back">Zurück zum Spiel</button>' : ''}
+      </div>
+    </div>
+    <aside class="menu-side" id="menu-side"></aside>`, 'menu');
+  renderMenuSide();
+  $('card').querySelectorAll('.node').forEach(b => {
+    b.addEventListener('click', () => {
+      menuSel = b.dataset.ch;
+      $('card').querySelectorAll('.node').forEach(n => n.classList.toggle('sel', n === b));
+      renderMenuSide();
+    });
+    b.addEventListener('dblclick', () => { if (isUnlocked(b.dataset.ch)) playChapter(b.dataset.ch); });
+  });
   bind('menu-back', closeOverlay);
   bind('reset-all', () => {
     if (!confirm('Wirklich alle Spielstände und Sterne löschen?')) return;
@@ -799,17 +829,47 @@ function showMenu() {
   });
 }
 
+function playChapter(id, fresh = false) {
+  closeOverlay();
+  if (fresh || id !== chapterId) loadChapter(id, { fresh });
+  else if (!progress.started) showIntro();
+}
+
+function renderMenuSide() {
+  const id = menuSel;
+  const ch = CHAPTERS[id];
+  const rec = meta.completed[id];
+  const open = isUnlocked(id);
+  const era = eraOf(id);
+  const hasSave = !!loadSave(id)?.b?.length;
+  $('menu-side').innerHTML = `
+    <span class="sub">${ch.bonus ? 'Bonus-Kapitel' : `Kapitel ${CAMPAIGN.indexOf(id) + 1} · ${era.name}`}</span>
+    <h2 style="margin:0">${ch.title.replace('Bonus: ', '')}</h2>
+    <p style="font-size:13.5px">${ch.story}</p>
+    <h3>Bestellung</h3>
+    <div class="thumbs">${ch.parts.map(p => `<span><img src="${thumb(p.item, 'i')}" alt="">${p.need}× ${itemName(p.item)}</span>`).join('')}</div>
+    <h3>Wertung</h3>
+    <p style="font-size:13px">${rec ? `${starHTML(rec.stars)} ${rec.best !== null ? '· Bestzeit ' + fmtTime(rec.best) : '· mit Demo'}` : 'noch nicht geschafft'}<br>
+      <span class="sub">★★★ bis ${fmtTime(ch.stars[0])} · ★★ bis ${fmtTime(ch.stars[1])}</span></p>
+    <div class="grow"></div>
+    ${open ? `<button class="btn primary" id="side-play">${id === chapterId ? 'Weiterspielen' : hasSave ? 'Fortsetzen' : 'Spielen'}</button>
+      ${hasSave || id === chapterId ? '<button class="btn" id="side-fresh">Von vorn beginnen</button>' : ''}`
+      : `<p class="sub">🔒 ${ch.bonus ? 'Wird nach Kapitel 1 freigeschaltet.' : 'Schließe erst das vorherige Kapitel ab.'}</p>`}`;
+  bind('side-play', () => playChapter(id));
+  bind('side-fresh', () => { if (confirm('Spielstand dieses Kapitels verwerfen und neu beginnen?')) playChapter(id, true); });
+}
+
 function showIntro() {
   const ch = content.chapter;
-  const newOnes = [...content.isNew].map(k => `<span class="chip"><span class="dot" style="background:${BUILDINGS[k].color}"></span>${bName(k)}</span>`).join('');
+  const newOnes = [...content.isNew].map(k => `<span><img src="${thumb(k)}" alt="">${bName(k)}</span>`).join('');
   openOverlay('intro', `
     <p class="sub">${ch.bonus ? 'Bonus-Kapitel' : `Kapitel ${CAMPAIGN.indexOf(chapterId) + 1} von ${CAMPAIGN.length} · Epoche: ${content.era.name}`}</p>
     <h2>${ch.title}</h2>
     ${content.era && content.era.chapters[0] === chapterId ? `<p class="era-banner">Neue Epoche: <b>${content.era.name}</b> – ${content.era.intro}</p>` : ''}
     <p>${ch.story}</p>
     <h3>Bestellung</h3>
-    <div class="chips">${ch.parts.map(p => chip(p.item, `${p.need}× `)).join('')}</div>
-    ${newOnes ? `<h3>Neu freigeschaltet</h3><div class="chips">${newOnes}</div>` : ''}
+    <div class="thumbs">${ch.parts.map(p => `<span><img src="${thumb(p.item, 'i')}" alt="">${p.need}× ${itemName(p.item)}</span>`).join('')}</div>
+    ${newOnes ? `<h3>Neu freigeschaltet</h3><div class="thumbs">${newOnes}</div>` : ''}
     <h3>Tipp</h3><p>${ch.tip}</p>
     <h3>Wertung (Spielzeit ab dem ersten Gebäude)</h3>
     <p>${starHTML(3)} bis ${fmtTime(ch.stars[0])} · ${starHTML(2)} bis ${fmtTime(ch.stars[1])} · ${starHTML(1)} immer</p>
@@ -865,24 +925,93 @@ function treeHTML(item, qty = 1, depth = 0) {
   return `<li>${chip(item, q)} <span class="via">← <b>${bName(r.m)}</b>${r.n > 1 ? ` (macht ${r.n} Stück)` : ''}</span><ul>${kids}</ul></li>`;
 }
 
+let bookSel = null;
+let bookFilter = '';
+
 function showBook(focus = null) {
-  const parts = content.parts.map(p => `<div class="bookpart" id="book-${p.item}"><ul class="tree">${treeHTML(p.item)}</ul></div>`).join('');
-  const machines = content.buildings.filter(k => BUILDINGS[k].cat === 'maschine')
-    .map(k => `<div><b>${bName(k)}</b><br>${(content.byMachine[k] || []).map(recipeLine).join('<br>')}</div>`).join('');
-  const sources = content.buildings.filter(k => BUILDINGS[k].cat === 'quelle')
-    .map(k => `<div><b>${bName(k)}</b><br>${itemName(BUILDINGS[k].out)} alle ${secs(BUILDINGS[k].ticks)}</div>`).join('');
+  if (focus) bookSel = focus;
+  if (!bookSel || !content.producer[bookSel]) bookSel = content.parts[0].item;
   openOverlay('book', `
-    <h2>Rezeptbuch</h2>
-    <p class="sub">So entsteht jedes Teil der Bestellung – von der Quelle bis zum fertigen Produkt. Jede Maschine nimmt ihre Zutaten von allen Seiten an und gibt nach vorn ab.</p>
-    <h3>Bestellung: ${content.chapter.title}</h3>${parts}
-    <h3>Maschinen</h3><div class="recipes">${machines}</div>
-    <h3>Quellen</h3><div class="recipes">${sources}</div>
-    <div class="actions"><button class="btn primary" id="book-close">Schließen <kbd>B</kbd></button></div>`);
-  bind('book-close', closeOverlay);
-  if (focus) {
-    const el = $(`book-${focus}`);
-    if (el) { el.classList.add('flash'); el.scrollIntoView({ block: 'center' }); }
+    <div class="book-list">
+      <div class="bh"><h2 style="margin:0">Rezeptbuch</h2><span class="sub">${content.chapter.title}</span>
+        <input id="book-search" placeholder="Item suchen …" value="${bookFilter}" autocomplete="off"></div>
+      <div class="book-items" id="book-items"></div>
+    </div>
+    <div class="book-detail" id="book-detail"></div>`, 'book');
+  $('book-search').addEventListener('input', ev => { bookFilter = ev.target.value.trim().toLowerCase(); renderBookList(); });
+  renderBookList();
+  renderBookDetail();
+}
+
+function renderBookList() {
+  const parts = content.parts.map(p => p.item);
+  const all = Object.keys(content.producer);
+  const raw = all.filter(i => content.producer[i].source && !parts.includes(i));
+  const mid = all.filter(i => !content.producer[i].source && !parts.includes(i));
+  const f = (list) => list.filter(i => !bookFilter || itemName(i).toLowerCase().includes(bookFilter))
+    .sort((a, b) => itemName(a).localeCompare(itemName(b), 'de'));
+  const group = (title, list) => list.length ? `<h4>${title}</h4>` + list.map(i =>
+    `<button class="bi${i === bookSel ? ' sel' : ''}" data-item="${i}"><img src="${thumb(i, 'i')}" alt="">${itemName(i)}</button>`).join('') : '';
+  $('book-items').innerHTML = group('Bestellung', bookFilter ? f(parts) : parts) + group('Zwischenprodukte', f(mid)) + group('Rohstoffe', f(raw));
+  $('book-items').querySelectorAll('.bi').forEach(b => b.addEventListener('click', () => { bookSel = b.dataset.item; renderBookList(); renderBookDetail(); }));
+}
+
+function ingButton(item, qty = 1) {
+  return `<button class="ing" data-item="${item}"><img src="${thumb(item, 'i')}" alt="">${qty > 1 ? `<span class="q">${qty}×</span>` : ''}${itemName(item)}</button>`;
+}
+
+function renderBookDetail() {
+  const item = bookSel;
+  const p = content.producer[item];
+  const part = content.parts.find(x => x.item === item);
+  const usedIn = content.recipes.filter(r => r.in[item]);
+  let how;
+  if (p.source) {
+    const b = BUILDINGS[p.source];
+    how = `<div class="recipe-row"><span class="mach"><img src="${thumb(p.source)}" alt="">${b.name}</span><span class="arrow">→</span>${ingButton(item)}
+      <span class="sub">Rohstoff, alle ${secs(b.ticks)}</span></div>`;
+  } else {
+    const r = p.recipe;
+    const b = BUILDINGS[r.m];
+    how = `<div class="recipe-row">${Object.entries(r.in).map(([k, v]) => ingButton(k, v)).join('<span class="arrow">+</span>')}
+      <span class="arrow">→</span><span class="mach"><img src="${thumb(r.m)}" alt="">${b.name}${b.power ? `<span class="sub">⚡ ${b.power}</span>` : ''}</span>
+      <span class="arrow">→</span>${ingButton(item, r.n)}<span class="sub">${secs(r.t)} pro Durchgang</span></div>`;
   }
+  $('book-detail').innerHTML = `
+    <div class="bd-head"><img src="${thumb(item, 'i')}" alt=""><div><h2 style="margin:0">${itemName(item)}</h2>
+      <span class="sub">${part ? `Teil der Bestellung: ${Math.min(progress.delivered[item] || 0, part.need)} / ${part.need} geliefert` : p.source ? 'Rohstoff' : 'Zwischenprodukt'}</span></div></div>
+    <h3>Herstellung</h3>${how}
+    <h3>Wird verwendet für</h3>
+    <div class="usedin">${usedIn.length ? usedIn.map(r => ingButton(r.out)).join('') : part ? '<span class="sub">Geht direkt in die Endmontage.</span>' : '<span class="sub">Nichts in diesem Kapitel.</span>'}</div>
+    <h3>Kompletter Weg von den Rohstoffen</h3>
+    <ul class="tree">${treeHTML(item)}</ul>`;
+  $('book-detail').querySelectorAll('.ing').forEach(b => b.addEventListener('click', () => {
+    if (!content.producer[b.dataset.item]) return;
+    bookSel = b.dataset.item;
+    renderBookList();
+    renderBookDetail();
+    $('book-detail').scrollTop = 0;
+  }));
+  const sel = $('book-items').querySelector('.bi.sel');
+  if (sel) sel.scrollIntoView({ block: 'nearest' });
+}
+
+function showHelp() {
+  const keys = [
+    ['Linksklick', 'Bauen – bei Bändern gedrückt halten und ziehen'], ['R', 'Drehen (vor dem Bauen oder das Gebäude unter der Maus)'],
+    ['Shift + Klick', 'Abreißen (Eisen kommt zurück)'], ['0', 'Werkzeug Abriss'], ['E', 'Werkzeug Aufrüsten (ab Industrialisierung)'],
+    ['1 – 9', 'Gebäude der aktuellen Kategorie'], ['/', 'Gebäude suchen'], ['Q', 'Gebäude unter der Maus kopieren'],
+    ['F / Shift+F', 'Sortierer-Filter wechseln / neu lernen'], ['Strg + Z', 'Letzten Strich rückgängig machen'],
+    ['B', 'Rezeptbuch'], ['U', 'Werkstatt'], ['P', 'Produktion'], ['Leertaste', 'Pause'], ['Esc', 'Menü'],
+    ['Rechte Maustaste', 'Kamera drehen'], ['WASD', 'Kamera verschieben'], ['Mausrad', 'Zoom'],
+  ];
+  openOverlay('help', `<h2>Steuerung</h2>
+    <div class="keys">${keys.map(([k, v]) => `<kbd>${k}</kbd><span>${v}</span>`).join('')}</div>
+    <h3>So funktioniert's</h3>
+    <p>Quellen erzeugen Rohstoffe, Maschinen verarbeiten sie. Jedes Gebäude gibt in Richtung seines weißen Pfeils ab, Maschinen nehmen Zutaten von allen Seiten an.
+    Bring alle Teile der Bestellung in eine Endmontage – rechts im Schaufenster wächst dein Sandwich.</p>
+    <div class="actions"><button class="btn primary" id="help-close">Alles klar</button></div>`);
+  bind('help-close', closeOverlay);
 }
 
 // ================================================================ Werkstatt
@@ -997,6 +1126,9 @@ function loadChapter(id, { fresh = false } = {}) {
   statSnaps.length = 0;
   buildShowcase();
   tab = 'logistik';
+  search = '';
+  $('search').value = '';
+  bookSel = null;
   tool = 'belt';
   buildDir = 0;
   $('chapter-title').textContent = content.chapter.title;
@@ -1039,9 +1171,10 @@ bind('btn-menu', showMenu);
 bind('btn-book', () => showBook());
 bind('btn-shop', () => showShop());
 bind('btn-stats', () => showStats());
+bind('btn-help', () => showHelp());
 bind('btn-mute', () => {
   sfx.setMuted(!sfx.isMuted());
-  $('btn-mute').textContent = sfx.isMuted() ? 'Ton aus' : 'Ton an';
+  $('btn-mute').querySelector('.ic').textContent = sfx.isMuted() ? '🔇' : '🔊';
 });
 document.querySelectorAll('.speed').forEach(b => b.addEventListener('click', () => setSpeed(Number(b.dataset.speed))));
 addEventListener('beforeunload', () => { save(); saveMeta(); });

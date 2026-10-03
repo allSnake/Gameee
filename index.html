@@ -32,24 +32,38 @@
   .btn.primary { background: var(--accent); color: #1b2430; font-weight: 700; padding: 10px 18px; font-size: 15px; }
   .btn.primary:hover { filter: brightness(1.08); }
 
-  /* Werkzeugleiste */
-  #toolbar { left: 12px; top: 12px; bottom: 12px; width: 214px; display: flex; flex-direction: column; gap: 8px; }
-  #toolbar h1 { margin: 0; font-size: 15px; letter-spacing: .05em; color: var(--accent); }
-  #toolbar h1 small { display: block; font-size: 11px; color: var(--muted); letter-spacing: .02em; font-weight: 500; }
-  #tabs { display: flex; gap: 4px; }
-  #tabs button { all: unset; flex: 1; text-align: center; cursor: pointer; font-size: 12px; padding: 6px 0; border-radius: 7px; color: var(--muted); }
-  #tabs button:hover { background: rgba(255,255,255,.06); }
-  #tabs button.active { background: rgba(255,183,3,.16); color: var(--accent); }
-  #tools { overflow-y: auto; flex: 1; margin: 0 -6px; padding: 0 6px; }
-  .tool { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap;
-    padding: 6px 9px; border-radius: 8px; font-size: 14px; border: 1px solid transparent; }
-  .tool:hover { background: rgba(255,255,255,.07); }
+  /* Navigation links */
+  #nav { left: 12px; top: 12px; width: 64px; display: flex; flex-direction: column; gap: 4px; padding: 10px 6px; align-items: stretch; }
+  #nav .logo-s { font-size: 11px; font-weight: 800; color: var(--accent); text-align: center; letter-spacing: .04em; line-height: 1.1; margin-bottom: 6px; }
+  .navbtn { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 0; border-radius: 9px; color: var(--muted); }
+  .navbtn:hover { background: rgba(255,255,255,.07); color: var(--text); }
+  .navbtn .ic { font-size: 18px; line-height: 1; }
+  .navbtn .lb { font-size: 10px; }
+
+  /* Bauleiste unten */
+  #buildbar { left: 388px; right: 12px; bottom: 12px; padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 8px; }
+  .bb-head { display: flex; gap: 6px; align-items: center; }
+  .cat { all: unset; cursor: pointer; font-size: 12.5px; padding: 5px 11px; border-radius: 999px; color: var(--muted); }
+  .cat:hover { background: rgba(255,255,255,.06); color: var(--text); }
+  .cat.active { background: rgba(255,183,3,.16); color: var(--accent); }
+  .cat .n { font-size: 10.5px; opacity: .7; margin-left: 3px; }
+  #search { margin-left: auto; width: 170px; background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 999px; color: var(--text);
+    padding: 5px 12px; font: inherit; font-size: 12.5px; outline: none; }
+  #search:focus { border-color: rgba(255,183,3,.6); }
+  #tiles { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+  .tool { all: unset; box-sizing: border-box; flex: none; width: 82px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 5px 4px 6px; border-radius: 10px; border: 1px solid transparent; position: relative; background: rgba(255,255,255,.03); }
+  .tool:hover { background: rgba(255,255,255,.08); }
   .tool.active { border-color: var(--accent); background: rgba(255,183,3,.12); }
-  .tool .new { font-size: 10px; font-weight: 700; color: #1b2430; background: var(--good); border-radius: 4px; padding: 0 4px; }
-  .tool .cost { margin-left: auto; white-space: nowrap; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .tool .cost::before { content: '⛓ '; }
-  .tool.poor { opacity: .45; }
-  .tool kbd { margin-left: 6px; }
+  .tool img { width: 52px; height: 52px; }
+  .tool .ph { width: 52px; height: 52px; border-radius: 10px; display: grid; place-items: center; font-size: 24px; }
+  .tool .nm { font-size: 11px; line-height: 1.2; text-align: center; height: 26px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .tool .cost { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .tool .new { position: absolute; top: 4px; left: 4px; font-size: 9px; font-weight: 800; color: #1b2430; background: var(--good); border-radius: 4px; padding: 0 4px; }
+  .tool kbd { position: absolute; top: 4px; right: 4px; font-size: 9.5px; padding: 0 4px; }
+  .tool.poor { opacity: .4; }
+  .tool.sep { margin-left: 10px; }
+  .tool.sep::before { content: ''; position: absolute; left: -9px; top: 10px; bottom: 10px; border-left: 1px solid var(--line); }
   #topbar .stock, #topbar .power { font-size: 13px; color: var(--muted); }
   #topbar .power b { color: #ffd166; }
   #topbar .power.bad { color: #ff8a7a; }
@@ -90,7 +104,7 @@
   .stars { color: var(--accent); letter-spacing: 1px; }
   .stars .off { color: rgba(255,255,255,.18); }
 
-  #info { left: 238px; bottom: 12px; font-size: 13px; line-height: 1.5; width: 290px; }
+  #info { left: 88px; bottom: 12px; font-size: 13px; line-height: 1.5; width: 290px; max-height: 40vh; overflow-y: auto; }
   #info:empty { display: none; }
   #info b { color: var(--accent); }
   #info .st { color: var(--muted); }
@@ -100,8 +114,6 @@
   #tutorial:empty { display: none; }
   #tutorial .step { color: var(--accent); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
   #tutorial b { color: var(--accent); }
-  #hint { right: 12px; bottom: 12px; font-size: 12px; color: var(--muted); line-height: 1.6; max-width: 250px; }
-  #hint b { color: var(--text); }
   #toast { left: 50%; top: 22%; transform: translateX(-50%); font-size: 18px; font-weight: 700;
     color: var(--accent); text-align: center; opacity: 0; pointer-events: none; transition: opacity .35s; }
   #toast.show { opacity: 1; }
@@ -146,26 +158,78 @@
   .recipes div { font-size: 13px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.04); line-height: 1.5; }
   .recipes b { color: var(--accent-2); }
 
-  @media (max-height: 820px) { #hint { display: none; } }
+  /* Hauptmenü */
+  .card.menu { max-width: 1180px; padding: 0; overflow: hidden; display: grid; grid-template-columns: 1fr 340px; max-height: calc(100vh - 40px); }
+  .menu-main { padding: 28px 30px; overflow-y: auto; }
+  .menu-side { background: rgba(255,255,255,.03); border-left: 1px solid var(--line); padding: 26px 24px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+  .timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 22px; }
+  .era-col { border-radius: 14px; padding: 14px 12px; background: rgba(255,255,255,.03); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+  .era-col .en { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .era-col .et { font-weight: 800; font-size: 15px; }
+  .era-col .ei { font-size: 26px; }
+  .node { all: unset; box-sizing: border-box; cursor: pointer; display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 10px; border: 1px solid transparent; }
+  .node:hover, .node.sel { background: rgba(255,183,3,.08); border-color: rgba(255,183,3,.4); }
+  .node.locked { opacity: .4; cursor: not-allowed; }
+  .node .num { width: 30px; height: 30px; flex: none; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 13px; background: rgba(255,255,255,.08); }
+  .node.done .num { background: var(--accent); color: #1b2430; }
+  .node .tt { font-size: 13px; font-weight: 600; line-height: 1.25; }
+  .node .ss { font-size: 11px; }
+  .menu-side h2 { font-size: 22px; }
+  .thumbs { display: flex; flex-wrap: wrap; gap: 4px; }
+  .thumbs span { display: inline-flex; flex-direction: column; align-items: center; width: 74px; font-size: 11px; text-align: center; color: var(--muted); }
+  .thumbs img { width: 48px; height: 48px; }
+  .menu-side .thumbs { display: flex; flex-wrap: wrap; gap: 4px; }
+  .menu-side .thumbs span { display: inline-flex; flex-direction: column; align-items: center; width: 62px; font-size: 10.5px; text-align: center; color: var(--muted); }
+  .menu-side .thumbs img { width: 44px; height: 44px; }
+  .menu-side .grow { flex: 1; }
+
+  /* Rezeptbuch */
+  .card.book { max-width: 1100px; padding: 0; display: grid; grid-template-columns: 290px 1fr; height: min(780px, calc(100vh - 40px)); overflow: hidden; }
+  .book-list { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .book-list .bh { padding: 18px 16px 10px; }
+  .book-list input { width: 100%; margin-top: 10px; background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 7px 10px; font: inherit; font-size: 13px; outline: none; }
+  .book-items { overflow-y: auto; padding: 0 8px 14px; }
+  .book-items h4 { margin: 12px 8px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .bi { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 8px; font-size: 13px; }
+  .bi:hover { background: rgba(255,255,255,.06); }
+  .bi.sel { background: rgba(255,183,3,.14); color: var(--accent); }
+  .bi img { width: 28px; height: 28px; }
+  .book-detail { padding: 22px 26px; overflow-y: auto; }
+  .bd-head { display: flex; gap: 16px; align-items: center; }
+  .bd-head img { width: 96px; height: 96px; background: rgba(255,255,255,.04); border-radius: 16px; }
+  .recipe-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; border: 1px solid var(--line); border-radius: 12px; margin-top: 8px; }
+  .recipe-row .arrow { color: var(--muted); font-size: 18px; }
+  .ing { all: unset; cursor: pointer; display: inline-flex; flex-direction: column; align-items: center; width: 76px; font-size: 11.5px; text-align: center; gap: 2px; padding: 4px; border-radius: 8px; }
+  .ing:hover { background: rgba(255,255,255,.07); }
+  .ing img { width: 44px; height: 44px; }
+  .ing .q { color: var(--accent); font-weight: 700; }
+  .mach { display: inline-flex; flex-direction: column; align-items: center; width: 92px; font-size: 11.5px; text-align: center; color: var(--accent-2); }
+  .mach img { width: 50px; height: 50px; }
+  .usedin { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* Hilfe */
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin-top: 14px; font-size: 14px; align-items: center; }
+  .keys kbd { font-size: 12px; padding: 2px 7px; color: var(--text); justify-self: start; }
+
   @media (max-width: 860px) {
-    #toolbar { width: 170px; }
-    #info, #hint { display: none; }
+    #info { display: none; }
+    #buildbar { left: 88px; }
     #right { width: 200px; }
     #showcase { height: 160px; }
     .tool kbd { display: none; }
-    #topbar { top: auto; bottom: 12px; }
     #tutorial { top: 12px; max-width: 46vw; }
   }
 </style>
 </head>
 <body>
-<div id="toolbar" class="panel">
-  <h1>ABSURD INDUSTRIES<small>Das Sandwich-Imperium</small></h1>
-  <div id="tabs"></div>
-  <div id="tools"></div>
-  <div class="row"><button class="btn" id="btn-book">Rezepte <kbd>B</kbd></button><button class="btn" id="btn-shop">Werkstatt <kbd>U</kbd></button></div>
-  <div class="row"><button class="btn" id="btn-stats">Produktion <kbd>P</kbd></button></div>
-  <div class="row"><button class="btn" id="btn-menu">Menü</button><button class="btn" id="btn-mute">Ton an</button></div>
+<div id="nav" class="panel">
+  <div class="logo-s">ABSURD<br>IND.</div>
+  <button class="navbtn" id="btn-menu" title="Menü (Esc)"><span class="ic">☰</span><span class="lb">Menü</span></button>
+  <button class="navbtn" id="btn-book" title="Rezeptbuch (B)"><span class="ic">📖</span><span class="lb">Rezepte</span></button>
+  <button class="navbtn" id="btn-shop" title="Werkstatt (U)"><span class="ic">🔧</span><span class="lb">Werkstatt</span></button>
+  <button class="navbtn" id="btn-stats" title="Produktion (P)"><span class="ic">📊</span><span class="lb">Produktion</span></button>
+  <button class="navbtn" id="btn-help" title="Steuerung (H)"><span class="ic">?</span><span class="lb">Hilfe</span></button>
+  <button class="navbtn" id="btn-mute" title="Ton an/aus"><span class="ic">🔊</span><span class="lb">Ton</span></button>
 </div>
 <div id="topbar" class="panel">
   <span class="title" id="chapter-title"></span>
@@ -188,9 +252,9 @@
 </div>
 <div id="info" class="panel"></div>
 <div id="tutorial" class="panel"></div>
-<div id="hint" class="panel">
-  <b>Linksklick</b> bauen (ziehen für Bänder) · <b>R</b> drehen · <b>Shift+Klick</b> abreißen · <b>Q</b> Gebäude kopieren ·
-  <b>F</b> Sortierer-Filter · <b>Strg+Z</b> rückgängig · <b>E</b> aufrüsten · <b>U</b> Werkstatt · <b>P</b> Produktion · <b>Rechte Maustaste</b> Kamera · <b>WASD</b> verschieben · <b>Mausrad</b> Zoom · <b>Leertaste</b> Pause
+<div id="buildbar" class="panel">
+  <div class="bb-head"><div id="cats" style="display:flex;gap:4px"></div><input id="search" placeholder="Gebäude suchen …  /" autocomplete="off"></div>
+  <div id="tiles"></div>
 </div>
 <div id="toast" class="panel"></div>
 <div id="overlay"><div class="card" id="card"></div></div>

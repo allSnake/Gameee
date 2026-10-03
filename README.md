@@ -41,6 +41,14 @@ URL-Parameter zum Ausprobieren:
 - `?fresh` – gespeicherten Stand des Kapitels ignorieren
 - `?demo` – die automatisch gebaute Demo-Fabrik laden
 
+## Oberfläche
+
+- **Hauptmenü:** Zeitleiste der vier Epochen mit allen Kapiteln, Sternen und Bestzeiten; rechts die Details zum gewählten Kapitel (Bestellung, Wertung, Spielen / Fortsetzen / Neu beginnen).
+- **Bauleiste unten:** Kategorien, Vorschaubilder aller Gebäude mit Preis, Suche (Taste `/`, findet auch über Produkte – „gurk“ findet Gurkenbeet und Einmachstation).
+- **Rezeptbuch (B):** links alle Items mit Suche (Bestellung, Zwischenprodukte, Rohstoffe), rechts Herstellung, Verwendung und der komplette Weg – alles anklickbar.
+- **Hilfe (H):** alle Tasten auf einen Blick.
+- Bewusst minimalistischer Look: matte Farben, heller Boden, weiche Schatten.
+
 ## Bedienung
 
 - **Linksklick** bauen, gedrückt ziehen für Bänder (sie richten sich nach der Zugrichtung aus)
@@ -78,6 +86,7 @@ URL-Parameter zum Ausprobieren:
 | `sim.js` | Fabrik-Simulation ohne Rendering (läuft auch in Node) |
 | `layout.js` | Baut automatisch eine funktionierende Fabrik je Kapitel (Demo + Tests) |
 | `models.js` | 3D-Modelle für Gebäude, Items und Endprojekte |
+| `thumbs.js` | Rendert Vorschaubilder von Gebäuden und Items |
 | `game.js` | Rendering, Eingabe, HUD, Menüs, Tutorial, Speichern |
 | `audio.js` | Kleine WebAudio-Effekte |
 | `tests/run.mjs` | Datenprüfung, Mechanik-Tests und Komplettdurchlauf aller Kapitel |

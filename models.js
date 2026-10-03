@@ -7,7 +7,7 @@ import { ITEMS, BUILDINGS } from './data.js';
 const matCache = new Map();
 export function mat(color, opts = {}) {
   const key = color + JSON.stringify(opts);
-  if (!matCache.has(key)) matCache.set(key, new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...opts }));
+  if (!matCache.has(key)) matCache.set(key, new THREE.MeshStandardMaterial({ color, roughness: 0.85, ...opts }));
   return matCache.get(key);
 }
 
