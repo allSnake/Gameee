@@ -23,6 +23,8 @@ export class Factory {
     this.tickNo = 0;
     this.produced = {};
     this.parts = new Set(content.parts.map(p => p.item));
+    this.speed = { source: 1, machine: 1 };   // Werkstatt-Upgrades
+    this.power = { supply: 0, demand: 0, ratio: 1 };
   }
 
   inBounds(x, z) { return x >= 0 && z >= 0 && x < this.N && z < this.N; }
@@ -36,7 +38,7 @@ export class Factory {
     if (!this.inBounds(x, z)) return null;
     this.remove(x, z);
     const cell = { kind, x, z, dir, item: null, out: null, pending: null, inv: {}, busy: null, timer: 0, rr: 0, filter: null, blocked: 0,
-      lastFrom: null, wantFrom: null, wantTick: -1 };
+      lastFrom: null, wantFrom: null, wantTick: -1, fuel: 0 };
     this.cells[z * this.N + x] = cell;
     this.list.push(cell);
     return cell;
@@ -70,6 +72,7 @@ export class Factory {
   recipesOf(kind) { return this.content.byMachine[kind] || []; }
 
   machineWants(c, type) {
+    if (c.kind === 'kraftwerk') return type === 'kohle' && (c.inv.kohle || 0) < 2;
     const rs = this.recipesOf(c.kind).filter(r => r.in[type]);
     if (!rs.length) return false;
     const cap = Math.max(...rs.map(r => r.in[type])) + MACHINE_BUFFER - 1;
@@ -151,11 +154,25 @@ export class Factory {
     this.tickNo++;
     const list = this.list;
 
+    // Stromnetz: Bedarf der arbeitenden Maschinen gegen Kraftwerke, die nur bei Bedarf Kohle verbrennen
+    let demand = 0;
+    for (const c of list) if (c.busy && BUILDINGS[c.kind].power) demand += BUILDINGS[c.kind].power;
+    let supply = 0;
+    for (const c of list) {
+      if (c.kind !== 'kraftwerk') continue;
+      const b = BUILDINGS.kraftwerk;
+      if (demand > 0 && !(c.fuel > 0) && c.inv.kohle > 0) { c.inv.kohle--; c.fuel = b.burn; }
+      if (c.fuel > 0) { supply += b.supply; if (demand > 0) c.fuel--; }
+    }
+    const ratio = demand > 0 ? Math.min(1, supply / demand) : 1;
+    this.power = { supply, demand, ratio };
+
     for (const c of list) {
       if (isSource(c.kind)) {
-        if (!c.out && ++c.timer >= BUILDINGS[c.kind].ticks) { c.out = this.spawn(c, BUILDINGS[c.kind].out); c.timer = 0; }
-      } else if (isMachine(c.kind)) {
-        if (c.busy && ++c.busy.timer >= c.busy.recipe.t) {
+        if (!c.out && (c.timer += this.speed.source) >= BUILDINGS[c.kind].ticks) { c.out = this.spawn(c, BUILDINGS[c.kind].out); c.timer = 0; }
+      } else if (isMachine(c.kind) && c.kind !== 'kraftwerk') {
+        const step = this.speed.machine * (BUILDINGS[c.kind].power ? ratio : 1);
+        if (c.busy && (c.busy.timer += step) >= c.busy.recipe.t) {
           c.pending = { type: c.busy.recipe.out, n: c.busy.recipe.n };
           c.busy = null;
         }
@@ -194,7 +211,9 @@ export class Factory {
 
   // Für Info-Anzeige: was macht die Maschine gerade?
   status(c) {
+    if (c.kind === 'kraftwerk') return { state: c.fuel > 0 ? 'busy' : (c.inv.kohle ? 'idle' : 'waiting'), fuel: c.inv.kohle || 0 };
     if (isMachine(c.kind)) {
+      if (c.busy && BUILDINGS[c.kind].power && this.power.ratio < 1) return { state: 'lowpower', recipe: c.busy.recipe, progress: c.busy.timer / c.busy.recipe.t };
       if (c.busy) return { state: 'busy', recipe: c.busy.recipe, progress: c.busy.timer / c.busy.recipe.t };
       if (c.out && c.blocked > 4) return { state: 'blocked' };
       const rs = this.recipesOf(c.kind);

@@ -49,6 +49,11 @@ export const ITEMS = {
   kohle:          { name: 'Kohle',           shape: 'box',    color: 0x2b2b2e, s: [0.8, 0.7, 0.8] },
   erz:            { name: 'Eisenerz',        shape: 'box',    color: 0x8a5a44, s: [0.9, 0.8, 0.9] },
   eisen:          { name: 'Eisen',           shape: 'box',    color: 0xaab4c2, s: [1.3, 0.4, 0.7] },
+  bauxit:         { name: 'Bauxit',          shape: 'box',    color: 0xc0623a, s: [0.9, 0.8, 0.9] },
+  aluminium:      { name: 'Aluminium',       shape: 'box',    color: 0xd7dde5, s: [1.3, 0.45, 0.7] },
+  alufolie:       { name: 'Alufolie',        shape: 'cyl',    color: 0xe8edf3, s: [0.6, 1.4, 0.6] },
+  trockensalat:   { name: 'Trockensalat',    shape: 'box',    color: 0xb9d98a, s: [1.2, 0.2, 1.2] },
+  raumpaket:      { name: 'Raumpaket',       shape: 'box',    color: 0xc9d2dc, s: [1.4, 1, 1.4] },
   // Bonus: Quietscheente
   rohoel:         { name: 'Rohöl',           shape: 'sphere', color: 0x1c1c22, s: [1, 1, 1] },
   plastik:        { name: 'Plastik',         shape: 'box',    color: 0xdfe6ee, s: [1.1, 0.8, 1.1] },
@@ -97,6 +102,7 @@ export const BUILDINGS = {
   gummibaum:        { cat: 'quelle', name: 'Gummibaum',       out: 'gummi',       ticks: 7, color: '#4a5160' },
   kohlemine:        { cat: 'quelle', name: 'Kohlemine',       out: 'kohle',       ticks: 5, color: '#2b2b2e' },
   erzmine:          { cat: 'quelle', name: 'Erzmine',         out: 'erz',         ticks: 6, color: '#8a5a44' },
+  bauxitmine:       { cat: 'quelle', name: 'Bauxitmine',      out: 'bauxit',      ticks: 6, color: '#c0623a' },
 
   muehle:         { cat: 'maschine', name: 'Mühle',          color: '#b8b8c0' },
   ofen:           { cat: 'maschine', name: 'Ofen',           color: '#d9534f' },
@@ -121,6 +127,13 @@ export const BUILDINGS = {
   raffinerie:     { cat: 'maschine', name: 'Raffinerie',     color: '#555b66' },
   formpresse:     { cat: 'maschine', name: 'Formpresse',     color: '#f08a24' },
   schmelze:       { cat: 'maschine', name: 'Schmelzofen',    color: '#c4552b' },
+  // power: Strombedarf, solange die Maschine arbeitet. Das Kraftwerk verbrennt Kohle und liefert Strom ins ganze Netz.
+  kraftwerk:      { cat: 'maschine', name: 'Kohlekraftwerk', color: '#4b5361', supply: 10, burn: 32,
+    info: 'Verbrennt Kohle und liefert 10 Strom ins Netz (eine Kohle reicht 8 s). Brennt nur, wenn Strom gebraucht wird.' },
+  elektrolyse:    { cat: 'maschine', name: 'Elektrolyse',    color: '#3f7fbf', power: 6 },
+  walzwerk:       { cat: 'maschine', name: 'Walzwerk',       color: '#8c96a3', power: 4 },
+  gefriertrockner:{ cat: 'maschine', name: 'Gefriertrockner', color: '#7fd0e8', power: 3 },
+  vakuumierer:    { cat: 'maschine', name: 'Vakuumierer',    color: '#6a7a8c', power: 4 },
 };
 
 // Rezepte: m = Maschine, in = Zutaten, out × n = Ergebnis, t = Takte (1 Takt = 0,25 s), from = Kapitel, ab dem es gilt.
@@ -160,6 +173,11 @@ export const RECIPES = [
   { m: 'muehle',       in: { kraut: 1 },                         out: 'gewuerz',        n: 1, t: 4, from: 'weltrekord' },
   { m: 'papierfabrik', in: { holz: 1, wasser: 1 },               out: 'papier',         n: 1, t: 5, from: 'weltrekord' },
   { m: 'faltmaschine', in: { papier: 2 },                        out: 'sandwichbox',    n: 1, t: 5, from: 'weltrekord' },
+  // Kapitel 6 – Weltraum
+  { m: 'elektrolyse',  in: { bauxit: 1 },                        out: 'aluminium',      n: 1, t: 6, from: 'weltraum' },
+  { m: 'walzwerk',     in: { aluminium: 1 },                     out: 'alufolie',       n: 2, t: 4, from: 'weltraum' },
+  { m: 'gefriertrockner', in: { salat: 1 },                      out: 'trockensalat',   n: 1, t: 5, from: 'weltraum' },
+  { m: 'vakuumierer',  in: { sandwichbox: 1, alufolie: 1 },      out: 'raumpaket',      n: 1, t: 6, from: 'weltraum' },
   // Bonus – Quietscheente (eigener Rezeptsatz)
   { m: 'schmelze',     in: { erz: 1, kohle: 1 },                 out: 'eisen',          n: 1, t: 6, from: 'ente' },
   { m: 'raffinerie',   in: { rohoel: 1 },                        out: 'plastik',        n: 1, t: 5, from: 'ente' },
@@ -175,7 +193,7 @@ export const RECIPES = [
 ];
 
 // Kampagne: jedes Kapitel schaltet Gebäude und Rezepte frei, die danach erhalten bleiben.
-export const CAMPAIGN = ['butterbrot', 'kaesetoast', 'blt', 'club', 'weltrekord'];
+export const CAMPAIGN = ['butterbrot', 'kaesetoast', 'blt', 'club', 'weltrekord', 'weltraum'];
 
 // stars: Spielzeit in Sekunden für ★★★ und ★★ (alles darüber gibt ★)
 export const CHAPTERS = {
@@ -223,6 +241,15 @@ export const CHAPTERS = {
       { item: 'mayo', need: 6 }, { item: 'senf', need: 6 }, { item: 'ketchup', need: 6 }, { item: 'gewuerz', need: 6 },
       { item: 'zahnstocher', need: 4 }, { item: 'sandwichbox', need: 4 }],
   },
+  weltraum: {
+    budget: 260,
+    title: 'Das Weltraum-Sandwich', short: 'Weltraum', grid: 46, stars: [2400, 4200],
+    story: 'Die Raumstation hat Hunger. Krümel sind in der Schwerelosigkeit lebensgefährlich, also wird alles gefriergetrocknet, in Alufolie gewickelt und vakuumverpackt. Dafür braucht die Fabrik zum ersten Mal Strom.',
+    tip: 'Elektrische Maschinen (⚡ in der Info) brauchen Strom. Kohlekraftwerke verbrennen Kohle und versorgen das ganze Netz – reicht der Strom nicht, laufen alle elektrischen Maschinen langsamer. Oben siehst du Angebot und Bedarf.',
+    unlock: ['kraftwerk', 'bauxitmine', 'elektrolyse', 'walzwerk', 'gefriertrockner', 'vakuumierer'],
+    parts: [{ item: 'toastscheibe', need: 12 }, { item: 'kaese', need: 6 }, { item: 'speck', need: 6 }, { item: 'trockensalat', need: 6 },
+      { item: 'senf', need: 4 }, { item: 'alufolie', need: 4 }, { item: 'raumpaket', need: 3 }],
+  },
   ente: {
     budget: 150,
     title: 'Bonus: Die Riesen-Quietscheente', short: 'Bonus: Ente', grid: 28, stars: [900, 1680], bonus: true,
@@ -257,6 +284,7 @@ export function chapterContent(id) {
 // Baukosten in Eisen. Abreißen gibt alles zurück.
 const COSTS = { belt: 1, splitter: 3, bruecke: 4, sortierer: 5, muelleimer: 2, sink: 5, lager: 5 };
 export function costOf(kind) {
+  if (kind === 'kraftwerk') return 20;
   return COSTS[kind] ?? (BUILDINGS[kind].cat === 'quelle' ? 6 : 12);
 }
 

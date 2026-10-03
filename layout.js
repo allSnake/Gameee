@@ -47,15 +47,23 @@ function place(node, xr, z0, out) {
 
 // Liefert [[kind, x, z, dir], ...] oder null, wenn es nicht ins Raster passt.
 // Jedes Teil endet in einer eigenen Endmontage – alle zählen fürs selbe Endprojekt.
-export function planChapter(content, N) {
+export function planChapter(content, N, BUILDINGS = null) {
   const trees = content.parts.map(p => measure(p.item, content.producer));
   const xr = Math.max(...trees.map(t => t.w));   // Wurzelspalte (Spalte 0 bleibt frei)
   if (xr + 2 >= N) return null;
+  // Strombedarf aller Maschinen im Plan -> so viele Kraftwerke (je 10 Strom) samt Kohlemine in die oberen zwei Reihen
+  let need = 0;
+  const count = (t) => { need += BUILDINGS?.[t.kind]?.power || 0; t.kids.filter(Boolean).forEach(count); };
+  trees.forEach(count);
+  const plants = need ? Math.ceil(need / 10) + 1 : 0;
+  const top = plants ? 3 : 0;
+  if (plants * 2 > N) return null;
   for (const gap of [1, 0]) {
     const total = trees.reduce((s, t) => s + t.h, 0) + gap * (trees.length - 1);
-    if (total > N) continue;
+    if (total + top > N) continue;
     const out = [];
-    let z = Math.floor((N - total) / 2);
+    for (let i = 0; i < plants; i++) { out.push(['kohlemine', 1 + i * 2, 0, 1]); out.push(['kraftwerk', 1 + i * 2, 1, 0]); }
+    let z = Math.max(top, Math.floor((N - total) / 2));
     for (const t of trees) {
       place(t, xr, z, out);
       out.push(['belt', xr + 1, z + t.root, 0]);

@@ -105,6 +105,25 @@ function run(f, ticks) { for (let i = 0; i < ticks; i++) f.tick(); }
   run(f, 200);
   ok(eisen > 5, `Materiallager: nur ${eisen} Eisen`);
 }
+{ // Strom: ohne Kraftwerk steht die Elektrolyse, mit Kraftwerk läuft sie, Upgrades beschleunigen
+  const wr = chapterContent('weltraum');
+  const make = (withPower, speed = 1) => {
+    const f = new Factory(10, wr);
+    let alu = 0;
+    f.hooks.trash = () => alu++;
+    f.speed.machine = speed;
+    f.speed.source = speed;
+    f.place('bauxitmine', 1, 5, 0); f.place('elektrolyse', 2, 5, 0); f.place('muelleimer', 3, 5, 0);
+    if (withPower) { f.place('kohlemine', 5, 1, 1); f.place('kraftwerk', 5, 2, 0); }
+    run(f, 400);
+    return { alu, f };
+  };
+  ok(make(false).alu === 0, 'Elektrolyse läuft ohne Strom');
+  const a = make(true), b = make(true, 1.5);
+  ok(a.alu > 10, `Elektrolyse mit Strom: nur ${a.alu}`);
+  ok(b.alu > a.alu, `Upgrade bringt nichts (${b.alu} vs ${a.alu})`);
+  ok(a.f.power.supply > 0, 'Kraftwerk liefert keinen Strom');
+}
 { // Stau: Endmontage nimmt keine Nicht-Teile an
   const f = new Factory(8, chapterContent('butterbrot'));
   f.place('weizenfeld', 0, 0, 0); f.place('belt', 1, 0, 0); f.place('sink', 2, 0, 0);
@@ -116,7 +135,7 @@ function run(f, ticks) { for (let i = 0; i < ticks; i++) f.tick(); }
 section('Kapitel (Auto-Fabrik)');
 for (const id of Object.keys(CHAPTERS)) {
   const c = chapterContent(id);
-  const plan = planChapter(c, c.chapter.grid);
+  const plan = planChapter(c, c.chapter.grid, BUILDINGS);
   ok(plan, `${id}: Auto-Fabrik passt nicht ins ${c.chapter.grid}er-Raster`);
   if (!plan) continue;
   const delivered = {};

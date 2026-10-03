@@ -117,7 +117,8 @@ let overlayOpen = false;
 let meta = loadMeta();
 
 function newProgress() {
-  return { delivered: {}, surplus: 0, trashed: 0, elapsed: 0, started: false, finished: false, demo: false, tut: 0, eisen: content.chapter.budget };
+  return { delivered: {}, surplus: 0, trashed: 0, elapsed: 0, started: false, finished: false, demo: false, tut: 0, eisen: content.chapter.budget,
+    upgrades: { source: 0, machine: 0 } };
 }
 
 const hooks = {
@@ -160,6 +161,7 @@ function placeBuilding(kind, x, z, dir, { silent = false } = {}) {
   }
   const price = costOf(kind) - (old ? costOf(old.kind) : 0);
   if (!silent && price > progress.eisen) { noIron(costOf(kind)); return null; }
+  if (!silent && stroke) stroke.push({ type: 'place', kind, x, z, dir, old: old ? { kind: old.kind, dir: old.dir, filter: old.filter } : null });
   detachMesh(old);
   const cell = factory.place(kind, x, z, dir);
   attachMesh(cell);
@@ -178,7 +180,36 @@ function removeBuilding(x, z, { silent = false } = {}) {
   const cell = factory.remove(x, z);
   if (!cell) return;
   detachMesh(cell);
-  if (!silent) { progress.eisen += costOf(cell.kind); renderStock(); sfx.remove(); scheduleSave(); }
+  if (!silent) {
+    if (stroke) stroke.push({ type: 'remove', kind: cell.kind, x, z, dir: cell.dir, filter: cell.filter });
+    progress.eisen += costOf(cell.kind);
+    renderStock();
+    sfx.remove();
+    scheduleSave();
+  }
+}
+
+// Rückgängig: ein Strich (Maus gedrückt bis losgelassen) ist ein Schritt
+let stroke = null;
+let history = [];
+function beginStroke() { stroke = []; }
+function endStroke() {
+  if (stroke && stroke.length) { history.push(stroke); if (history.length > 60) history.shift(); }
+  stroke = null;
+}
+function undo() {
+  const last = history.pop();
+  if (!last) { toast('Nichts zum Rückgängigmachen', 1200); return; }
+  for (const a of [...last].reverse()) {
+    if (a.type === 'place') {
+      removeBuilding(a.x, a.z);
+      if (a.old) { const c = placeBuilding(a.old.kind, a.x, a.z, a.old.dir); if (c) c.filter = a.old.filter ?? null; }
+    } else {
+      const c = placeBuilding(a.kind, a.x, a.z, a.dir);
+      if (c) c.filter = a.filter ?? null;
+    }
+  }
+  toast('Rückgängig', 900);
 }
 
 function rotateCell(cell) {
@@ -268,8 +299,13 @@ function buildShowcase() {
 const ITEM_Y = { belt: 0.28, splitter: 0.32, sortierer: 0.34, bruecke: 0.72 };
 const tmp = new THREE.Vector3();
 
+const statSnaps = [];
 function simTick() {
   factory.tick();
+  if (factory.tickNo % 20 === 0) {
+    statSnaps.push({ t: factory.tickNo, p: { ...factory.produced } });
+    if (statSnaps.length > 30) statSnaps.shift();
+  }
   if (progress.started && !progress.finished) progress.elapsed++;
   checkTutorial();
 }
@@ -416,6 +452,7 @@ canvas.addEventListener('pointerdown', ev => {
   if (!cell) return;
   painting = true;
   lastPaint = null;
+  beginStroke();
   paint(cell, ev);
 });
 canvas.addEventListener('pointermove', ev => {
@@ -426,7 +463,7 @@ canvas.addEventListener('pointermove', ev => {
   if (painting && hover && !(lastPaint && lastPaint.x === hover.x && lastPaint.z === hover.z)) paint(hover, ev);
 });
 canvas.addEventListener('pointerleave', () => { hover = null; updateGhost(); renderInfo(); });
-addEventListener('pointerup', () => { painting = false; lastPaint = null; });
+addEventListener('pointerup', () => { painting = false; lastPaint = null; endStroke(); });
 canvas.addEventListener('contextmenu', ev => ev.preventDefault());
 
 const keys = new Set();
@@ -434,6 +471,9 @@ addEventListener('keydown', ev => {
   const k = ev.key.toLowerCase();
   if (k === 'escape') { overlayOpen ? closeOverlayIfAllowed() : showMenu(); return; }
   if (k === 'b' && !ev.repeat) { if (overlayKind === 'book') closeOverlay(); else if (!overlayOpen) showBook(); return; }
+  if (k === 'u' && !ev.repeat) { if (overlayKind === 'shop') closeOverlay(); else if (!overlayOpen) showShop(); return; }
+  if (k === 'p' && !ev.repeat) { if (overlayKind === 'stats') closeOverlay(); else if (!overlayOpen) showStats(); return; }
+  if (k === 'z' && (ev.ctrlKey || ev.metaKey) && !overlayOpen) { ev.preventDefault(); undo(); return; }
   if (overlayOpen || ev.repeat) return;
   const hovered = hover && factory.at(hover.x, hover.z);
   if (k === 'r') {
@@ -516,7 +556,8 @@ function describeKind(kind) {
 function describeKindBase(kind) {
   const b = BUILDINGS[kind];
   if (b.cat === 'quelle') return `<b>${b.name}</b><br>Erzeugt ${itemName(b.out)} alle ${secs(b.ticks)}.`;
-  if (b.cat === 'maschine') return `<b>${b.name}</b><br>${(content.byMachine[kind] || []).map(recipeLine).join('<br>')}`;
+  if (kind === 'kraftwerk') return `<b>${b.name}</b><br>Kohle → <b>⚡ ${b.supply} Strom</b><br><span class="st">${b.info}</span>`;
+  if (b.cat === 'maschine') return `<b>${b.name}</b>${b.power ? ` <span class="st">⚡ ${b.power} Strom</span>` : ''}<br>${(content.byMachine[kind] || []).map(recipeLine).join('<br>')}`;
   return `<b>${b.name}</b><br>${b.info}`;
 }
 
@@ -525,11 +566,13 @@ function describeCell(c) {
   if (isMachine(c.kind)) {
     const st = factory.status(c);
     const inv = Object.entries(c.inv).filter(([, v]) => v > 0).map(([k, v]) => `${v}× ${itemName(k)}`);
-    if (st.state === 'busy') html += `<br><span class="st good">arbeitet: ${itemName(st.recipe.out)} ${Math.round(st.progress * 100)} %</span>`;
+    if (c.kind === 'kraftwerk') html += `<br><span class="st ${st.state === 'busy' ? 'good' : st.state === 'waiting' ? 'bad' : ''}">${st.state === 'busy' ? 'brennt' : st.state === 'waiting' ? 'keine Kohle' : 'bereit (kein Bedarf)'} · Kohle: ${st.fuel}</span>`;
+    else if (st.state === 'lowpower') html += `<br><span class="st bad">zu wenig Strom – läuft mit ${Math.round(factory.power.ratio * 100)} %</span>`;
+    else if (st.state === 'busy') html += `<br><span class="st good">arbeitet: ${itemName(st.recipe.out)} ${Math.round(st.progress * 100)} %</span>`;
     else if (st.state === 'blocked') html += '<br><span class="st bad">Ausgang blockiert – nichts nimmt das Produkt an</span>';
     else if (st.state === 'waiting') html += `<br><span class="st bad">wartet auf: ${st.missing.map(itemName).join(', ')}</span>`;
     else html += '<br><span class="st">wartet auf Zutaten</span>';
-    if (inv.length) html += `<br><span class="st">Lager: ${inv.join(', ')}</span>`;
+    if (inv.length && c.kind !== 'kraftwerk') html += `<br><span class="st">Lager: ${inv.join(', ')}</span>`;
   } else if (isSource(c.kind)) {
     if (factory.status(c).state === 'blocked') html += '<br><span class="st bad">Ausgang blockiert</span>';
   } else {
@@ -598,7 +641,18 @@ function renderStarTarget() {
 }
 
 let lastShownSecond = -1;
+function renderPower() {
+  const el = $('power');
+  const on = content.buildings.includes('kraftwerk');
+  el.style.display = on ? '' : 'none';
+  if (!on) return;
+  const { supply, demand } = factory.power;
+  el.innerHTML = `⚡ <b>${supply}</b>/${demand}`;
+  el.classList.toggle('bad', demand > supply);
+}
+
 function renderTime() {
+  renderPower();
   const sec = Math.floor(progress.elapsed * TICK);
   if (sec === lastShownSecond) return;
   lastShownSecond = sec;
@@ -713,6 +767,7 @@ function showOutro(seconds, stars) {
     blt: 'Bacon, Lettuce, Tomato – und eine Mayo, auf die das Marketing stolz ist.',
     club: 'Drei Etagen und ein Zahnstocher. Der Club ist zufrieden.',
     weltrekord: 'Das Komitee misst nach. Weltrekord! Niemand weiß, wer das essen soll.',
+    weltraum: 'Krümelfrei, vakuumiert, in Alufolie. Houston, wir haben ein Sandwich.',
     ente: 'QUIETSCH.',
   };
   openOverlay('outro', `
@@ -721,7 +776,8 @@ function showOutro(seconds, stars) {
     <div class="bigstars">${progress.demo ? '<span class="stars"><span class="off">★★★</span></span>' : starHTML(stars)}</div>
     <p class="center">${progress.demo ? 'Mit der Demo gebaut – keine Wertung, aber das nächste Kapitel ist frei.' : `Spielzeit ${fmtTime(seconds)}${rec?.best !== null && rec?.best !== undefined ? ` · Bestzeit ${fmtTime(rec.best)}` : ''}`}</p>
     <p class="center" style="margin-top:8px">${lines[chapterId] || ''}</p>
-    ${chapterId === 'weltrekord' ? '<p class="center" style="margin-top:8px;color:var(--accent)">Du hast das Sandwich-Imperium vollendet. Probier das Bonus-Kapitel mit der Quietscheente!</p>' : ''}
+    ${chapterId === 'weltraum' ? '<p class="center" style="margin-top:8px;color:var(--accent)">Du hast das Sandwich-Imperium vollendet – bis ins All. Probier das Bonus-Kapitel mit der Quietscheente!</p>' : ''}
+    ${chapterId === 'weltrekord' ? '<p class="center" style="margin-top:8px;color:var(--accent)">Rekord gebrochen! Aber da oben auf der Raumstation knurrt schon der nächste Magen …</p>' : ''}
     <div class="actions" style="justify-content:center">
       <button class="btn" id="out-stay">Weiterbauen</button>
       <button class="btn" id="out-menu">Menü</button>
@@ -760,6 +816,70 @@ function showBook(focus = null) {
     const el = $(`book-${focus}`);
     if (el) { el.classList.add('flash'); el.scrollIntoView({ block: 'center' }); }
   }
+}
+
+// ================================================================ Werkstatt
+const UPGRADES = {
+  source:  { name: 'Turbo-Quellen',  desc: 'Alle Quellen produzieren 25 % schneller.' },
+  machine: { name: 'Turbo-Maschinen', desc: 'Alle Maschinen arbeiten 25 % schneller.' },
+};
+const UPGRADE_COSTS = [30, 60, 100];
+const upgradeLevel = (k) => progress.upgrades?.[k] || 0;
+
+function applyUpgrades() {
+  progress.upgrades ||= { source: 0, machine: 0 };
+  factory.speed.source = 1 + 0.25 * upgradeLevel('source');
+  factory.speed.machine = 1 + 0.25 * upgradeLevel('machine');
+}
+
+function buyUpgrade(k) {
+  const lvl = upgradeLevel(k);
+  const cost = UPGRADE_COSTS[lvl];
+  if (cost === undefined) return;
+  if (progress.eisen < cost) { noIron(cost); return; }
+  progress.eisen -= cost;
+  progress.upgrades[k] = lvl + 1;
+  applyUpgrades();
+  renderStock();
+  sfx.partDone();
+  scheduleSave();
+  showShop();
+}
+
+function showShop() {
+  const rows = Object.entries(UPGRADES).map(([k, u]) => {
+    const lvl = upgradeLevel(k);
+    const cost = UPGRADE_COSTS[lvl];
+    const pips = '●'.repeat(lvl) + '<span class="off">' + '●'.repeat(UPGRADE_COSTS.length - lvl) + '</span>';
+    return `<div class="upgrade"><div><b>${u.name}</b> <span class="stars">${pips}</span><br><span class="sub">${u.desc} Aktuell: ${Math.round((1 + 0.25 * lvl) * 100)} %</span></div>
+      ${cost === undefined ? '<span class="sub">Maximum</span>' : `<button class="btn ${progress.eisen >= cost ? 'primary' : ''}" data-up="${k}">⛓ ${cost} Eisen</button>`}</div>`;
+  }).join('');
+  openOverlay('shop', `
+    <h2>Werkstatt</h2>
+    <p class="sub">Upgrades gelten für dieses Kapitel und kosten Eisen aus deinem Baukonto (aktuell ⛓ ${progress.eisen}).</p>
+    <div class="upgrades">${rows}</div>
+    <div class="actions"><button class="btn primary" id="shop-close">Schließen <kbd>U</kbd></button></div>`);
+  $('card').querySelectorAll('[data-up]').forEach(b => b.addEventListener('click', () => buyUpgrade(b.dataset.up)));
+  bind('shop-close', closeOverlay);
+}
+
+// ================================================================ Statistik
+function showStats() {
+  const now = { t: factory.tickNo, p: factory.produced };
+  const ref = statSnaps.find(sn => now.t - sn.t <= 240) || statSnaps[0];
+  const minutes = ref ? (now.t - ref.t) * TICK / 60 : 0;
+  const rows = Object.entries(now.p).sort((a, b) => b[1] - a[1]).map(([item, total]) => {
+    const rate = minutes > 0 ? (total - (ref.p[item] || 0)) / minutes : 0;
+    const part = content.parts.find(p => p.item === item);
+    return `<tr><td>${chip(item)}</td><td>${total}</td><td>${rate.toFixed(1).replace('.', ',')}</td><td>${part ? `${Math.min(progress.delivered[item] || 0, part.need)}/${part.need}` : ''}</td></tr>`;
+  }).join('');
+  const pw = content.buildings.includes('kraftwerk') ? `<p class="sub">Strom: ⚡ ${factory.power.supply} Angebot, ${factory.power.demand} Bedarf</p>` : '';
+  openOverlay('stats', `
+    <h2>Produktion</h2>
+    <p class="sub">Hergestellte Items seit dem Laden des Kapitels, Rate über die letzte Minute Spielzeit.</p>${pw}
+    ${rows ? `<table class="stats"><tr><th>Item</th><th>Gesamt</th><th>pro Minute</th><th>Bestellung</th></tr>${rows}</table>` : '<p style="margin-top:12px">Noch nichts produziert.</p>'}
+    <div class="actions"><button class="btn primary" id="stats-close">Schließen <kbd>P</kbd></button></div>`);
+  bind('stats-close', closeOverlay);
 }
 
 // ================================================================ Speichern
@@ -804,6 +924,9 @@ function loadChapter(id, { fresh = false } = {}) {
     }
     Object.assign(progress, saved.p || {});
   }
+  applyUpgrades();
+  history = [];
+  statSnaps.length = 0;
   buildShowcase();
   tab = 'logistik';
   tool = 'belt';
@@ -822,7 +945,7 @@ function loadChapter(id, { fresh = false } = {}) {
 }
 
 function runDemo() {
-  const plan = planChapter(content, N);
+  const plan = planChapter(content, N, BUILDINGS);
   if (!plan) { toast('Die Demo passt leider nicht aufs Feld.'); return; }
   if (factory.list.length && !params.has('demo') && !confirm('Die Demo reißt deine Fabrik in diesem Kapitel ab. Trotzdem starten?')) return;
   for (const c of [...factory.list]) removeBuilding(c.x, c.z, { silent: true });
@@ -830,6 +953,8 @@ function runDemo() {
   progress.started = true;
   progress.demo = true;
   progress.tut = TUTORIAL.length;
+  applyUpgrades();
+  history = [];
   for (const [kind, x, z, dir] of plan) placeBuilding(kind, x, z, dir, { silent: true });
   buildShowcase();
   renderStock();
@@ -844,6 +969,8 @@ $('chapter-title').style.cursor = 'pointer';
 $('chapter-title').title = 'Auftrag anzeigen';
 bind('btn-menu', showMenu);
 bind('btn-book', () => showBook());
+bind('btn-shop', () => showShop());
+bind('btn-stats', () => showStats());
 bind('btn-mute', () => {
   sfx.setMuted(!sfx.isMuted());
   $('btn-mute').textContent = sfx.isMuted() ? 'Ton aus' : 'Ton an';
@@ -855,10 +982,11 @@ addEventListener('beforeunload', () => { save(); saveMeta(); });
 const clock = new THREE.Clock();
 let acc = 0;
 let infoTimer = 0;
+let statsTimer = 0;
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.1);
   if (factory) {
-    if (!overlayOpen || overlayKind === 'outro') {
+    if (!overlayOpen || overlayKind === 'outro' || overlayKind === 'stats') {
       acc += dt * speed;
       let steps = 0;
       while (acc >= TICK && steps++ < 40) { acc -= TICK; simTick(); }
@@ -870,6 +998,8 @@ function frame() {
     renderTime();
     infoTimer += dt;
     if (infoTimer > 0.25 && hover) { infoTimer = 0; renderInfo(); }
+    statsTimer += dt;
+    if (statsTimer > 1 && overlayKind === 'stats') { statsTimer = 0; const sc = $('card').scrollTop; showStats(); $('card').scrollTop = sc; }
   }
   controls.update();
   renderer.render(scene, camera);

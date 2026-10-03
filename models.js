@@ -241,8 +241,9 @@ function sourceDecor(kind, g, add) {
       add('cone', 0xe6d29a, 0.7, 0.5, 0.7, -0.05, 0.44, 0);
       break;
     case 'kohlemine':
-    case 'erzmine': {
-      const rock = kind === 'kohlemine' ? 0x2b2b2e : 0x8a5a44;
+    case 'erzmine':
+    case 'bauxitmine': {
+      const rock = { kohlemine: 0x2b2b2e, erzmine: 0x8a5a44, bauxitmine: 0xc0623a }[kind];
       add('box', 0x5a5f6a, 0.94, 0.2, 0.94, 0, 0.1, 0);
       add('cone', 0x6f7480, 0.8, 0.55, 0.8, -0.12, 0.47, 0);
       add('box', 0x15161a, 0.12, 0.28, 0.34, 0.2, 0.34, 0);
@@ -410,6 +411,41 @@ function machineDecor(kind, g, add) {
       add('cyl', 0x555a62, 0.16, 0.6, 0.16, -0.3, 1.1, -0.28);
       named(add('box', 0xffa040, 0.24, 0.08, 0.16, 0.3, 0.3, 0, add.glow(0xff8a00), false), 'bob');
       break;
+    case 'kraftwerk':
+      add('box', 0x3b414c, 0.92, 0.5, 0.92, 0, 0.25, 0);
+      add('cyl', 0x8b919d, 0.42, 0.9, 0.42, -0.2, 0.9, -0.18);
+      add('cyl', 0xd64545, 0.44, 0.08, 0.44, -0.2, 1.2, -0.18, {}, false);
+      add('box', 0x2a2018, 0.3, 0.2, 0.06, 0.15, 0.25, 0.47, add.glow(0xff6a00), false);
+      named(add('sphere', 0xb8b8c0, 0.3, 0.3, 0.3, -0.2, 1.55, -0.18, { transparent: true, opacity: 0.6 }, false), 'bob');
+      add('box', 0xffd166, 0.12, 0.3, 0.04, 0.25, 0.65, 0.2, add.glow(0xffd166), false);
+      break;
+    case 'elektrolyse':
+      base(0x2f5f8f, 0.3);
+      add('box', 0x9be7f5, 0.7, 0.4, 0.6, -0.04, 0.5, 0, { transparent: true, opacity: 0.55 }, false);
+      add('box', 0x555a62, 0.06, 0.6, 0.4, -0.25, 0.65, 0);
+      add('box', 0xd7dde5, 0.06, 0.6, 0.4, 0.17, 0.65, 0, { metalness: 0.7 });
+      named(add('sphere', 0xffffff, 0.08, 0.08, 0.08, -0.04, 0.6, 0.1, add.glow(0x9be7f5), false), 'bob');
+      break;
+    case 'walzwerk':
+      base(0x6a7480, 0.35);
+      for (const y of [0.52, 0.76]) {
+        const r = named(add('cyl', 0xd7dde5, 0.24, 0.85, 0.24, 0, y, 0, { metalness: 0.7 }), 'spin', 'y');
+        r.rotation.x = Math.PI / 2;
+      }
+      add('box', 0x4a5160, 0.1, 0.6, 0.94, -0.3, 0.65, 0);
+      add('box', 0xe8edf3, 0.4, 0.02, 0.7, 0.3, 0.4, 0, { metalness: 0.8 }, false);
+      break;
+    case 'gefriertrockner':
+      base(0xdfe8ee, 0.75);
+      add('box', 0x7fd0e8, 0.5, 0.4, 0.04, 0, 0.42, 0.47, { transparent: true, opacity: 0.7 }, false);
+      named(add('cone', 0xffffff, 0.2, 0.2, 0.2, -0.2, 0.9, -0.2, add.glow(0x7fd0e8)), 'spin', 'y');
+      break;
+    case 'vakuumierer':
+      base(0x4f5d6e, 0.4);
+      add('box', 0xc9d2dc, 0.6, 0.06, 0.6, 0, 0.43, 0, { metalness: 0.6 }, false);
+      named(add('box', 0x8c96a3, 0.64, 0.12, 0.64, 0, 0.75, 0, { transparent: true, opacity: 0.8 }), 'bob');
+      add('cyl', 0x2a2f36, 0.12, 0.5, 0.12, -0.36, 0.65, -0.36);
+      break;
     case 'formpresse':
       base(0xd9741c, 0.4);
       add('box', 0xffa94d, 0.5, 0.06, 0.5, 0, 0.42, 0, {}, false);
@@ -452,6 +488,8 @@ const SHOWCASES = {
   blt: [['toast', 'toastscheibe'], ['sauce', 'mayo', 0xfff8dc], ['leaf', 'salat'], ['tomato', 'tomatenscheibe'], ['bacon', 'speck'], ['bacon', 'speck'], ['toast', 'toastscheibe']],
   club: [['toast', 'toastscheibe'], ['sauce', 'mayo', 0xfff8dc], ['leaf', 'salat'], ['chicken', 'grillhaehnchen'], ['toast', 'toastscheibe'],
     ['bacon', 'speck'], ['tomato', 'tomatenscheibe'], ['pickle', 'essiggurke'], ['toast', 'toastscheibe'], ['pick', 'zahnstocher']],
+  weltraum: [['toast', 'toastscheibe'], ['cheese', 'kaese'], ['bacon', 'speck'], ['leaf', 'trockensalat'], ['sauce', 'senf', 0xf2c230],
+    ['toast', 'toastscheibe'], ['foil', 'alufolie'], ['box', 'raumpaket']],
   weltrekord: [['toast', 'toastscheibe'], ['spread', 'butter', 0xffe27a], ['cheese', 'kaese'], ['leaf', 'salat'], ['bacon', 'speck'], ['tomato', 'tomatenscheibe'],
     ['toast', 'toastscheibe'], ['sauce', 'mayo', 0xfff8dc], ['chicken', 'grillhaehnchen'], ['pickle', 'essiggurke'], ['sauce', 'senf', 0xf2c230], ['toast', 'toastscheibe'],
     ['sauce', 'ketchup', 0xd6281f], ['cheese', 'kaese'], ['bacon', 'speck'], ['leaf', 'salat'], ['sprinkle', 'gewuerz'], ['toast', 'toastscheibe'],
@@ -470,7 +508,7 @@ function makeSandwich(spec) {
   let y = 0;
   const extras = [];
   for (const [type, item, color] of spec) {
-    if (type === 'pick' || type === 'box') { extras.push([type, item]); continue; }
+    if (type === 'pick' || type === 'box' || type === 'foil') { extras.push([type, item]); continue; }
     const g = new THREE.Group();
     const mats = [];
     const L = {
@@ -493,8 +531,15 @@ function makeSandwich(spec) {
     if (type === 'pick') {
       g.add(part('cyl', layerMaterial(0xe8d4a8, mats), 0.035, y + 0.25, 0.035, 0.1, (y + 0.25) / 2, 0.1, false));
       g.add(part('cone', layerMaterial(0xd64545, mats), 0.14, 0.16, 0.14, 0.1, y + 0.3, 0.1, false));
+    } else if (type === 'foil') {
+      const m = layerMaterial(0xe8edf3, mats);
+      m.metalness = 0.9;
+      m.roughness = 0.25;
+      g.add(part('box', m, 0.98, y + 0.06, 0.98, 0, (y + 0.06) / 2, 0, false));
+      m.userData.foil = true;
     } else {
-      g.add(part('box', layerMaterial(0xf2e6c9, mats), 1.08, y + 0.2, 1.08, 0, (y + 0.2) / 2, 0, false));
+      const raum = item === 'raumpaket';
+      g.add(part('box', layerMaterial(raum ? 0xc9d2dc : 0xf2e6c9, mats), 1.08, y + 0.2, 1.08, 0, (y + 0.2) / 2, 0, false));
       mats.forEach(m => { m.userData.boxed = true; });
     }
     root.add(g);
@@ -560,8 +605,8 @@ export function makeEndProject(chapterId) {
       for (const l of s.layers) {
         const on = done.has(l.item);
         for (const m of l.mats) {
-          m.opacity = on ? (m.userData.boxed ? 0.38 : 1) : (m.userData.boxed ? 0.05 : 0.12);
-          m.depthWrite = on && !m.userData.boxed;
+          m.opacity = on ? (m.userData.boxed ? 0.38 : m.userData.foil ? 0.72 : 1) : (m.userData.boxed ? 0.05 : 0.12);
+          m.depthWrite = on && !m.userData.boxed && !m.userData.foil;
         }
         if (on && l.item === justDone) l.pop = 0;
       }

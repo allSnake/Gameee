@@ -13,6 +13,7 @@ vom Schwein bis zum Speck, vom Apfelbaum bis zur selbst eingelegten Essiggurke.
 | 3 | **Das BLT** | Toast, Speck, Salat, Tomate, Mayo | Brücke, Schweinestall, Wald, Salatbeet, Gewächshaus, Hühnerstall, Rapsfeld, Metzgerei, Räucherei, Waschanlage, Ölpresse, Mixer |
 | 4 | **Das Club-Sandwich** | 8 Teile inkl. Grillhähnchen, Essiggurken, Zahnstocher | Sortierer, Hähnchenfarm, Salzmine, Apfelbaum, Gurkenbeet, Grill, Saftpresse, Einmachstation, Schnitzerei |
 | 5 | **Das Weltrekord-Sandwich** | 14 Teile, über 100 Stück | Senffeld, Kräutergarten, Kochtopf (Ketchup), Papierfabrik, Faltmaschine (Sandwichbox) |
+| 6 | **Das Weltraum-Sandwich** | Toast, Käse, Speck, Trockensalat, Senf, Alufolie, Raumpaket | **Strom**: Kohlekraftwerk, Bauxitmine, Elektrolyse, Walzwerk, Gefriertrockner, Vakuumierer |
 | Bonus | **Die Riesen-Quietscheente** | Körper, Kopf, Schnabel, Augen, Quietscher, Farbe, Lack, Papier | eigener Rezeptsatz mit Öl, Plastik, Glas, Gummi |
 
 Kapitel werden nacheinander freigeschaltet, Gebäude und Rezepte bleiben erhalten. Das Bonus-Kapitel öffnet sich nach Kapitel 1.
@@ -28,7 +29,7 @@ Dann `http://localhost:8000` öffnen.
 
 URL-Parameter zum Ausprobieren:
 - `?unlock` – alle Kapitel freischalten
-- `?chapter=club` – direkt ein Kapitel laden (`butterbrot`, `kaesetoast`, `blt`, `club`, `weltrekord`, `ente`)
+- `?chapter=club` – direkt ein Kapitel laden (`butterbrot`, `kaesetoast`, `blt`, `club`, `weltrekord`, `weltraum`, `ente`)
 - `?fresh` – gespeicherten Stand des Kapitels ignorieren
 - `?demo` – die automatisch gebaute Demo-Fabrik laden
 
@@ -37,7 +38,7 @@ URL-Parameter zum Ausprobieren:
 - **Linksklick** bauen, gedrückt ziehen für Bänder (sie richten sich nach der Zugrichtung aus)
 - **R** drehen (auch das Gebäude unter der Maus) · **Shift+Klick** oder **0** abreißen · **1–9** Werkzeug im aktuellen Tab
 - **Q** kopiert das Gebäude unter der Maus · **F** ändert den Filter eines Sortierers (Shift+F: neu lernen)
-- **B** Rezeptbuch · **Leertaste** Pause · **Esc** Menü
+- **B** Rezeptbuch · **U** Werkstatt · **P** Produktion · **Strg+Z** rückgängig · **Leertaste** Pause · **Esc** Menü
 - **Rechte Maustaste** Kamera drehen · **WASD** verschieben · **Mausrad** Zoom
 - Ein Klick auf ein Teil der Bestellung öffnet dessen Rezeptbaum, ein Klick aufs Schaufenster vergrößert es.
 
@@ -45,6 +46,11 @@ URL-Parameter zum Ausprobieren:
 
 - **Baukosten:** Jedes Gebäude kostet Eisen (Band 1, Quelle 6, Maschine 12 …), Abreißen erstattet alles. Jedes Kapitel startet mit einem Baukonto;
   ab Kapitel 2 füllst du es selbst auf: Erzmine + Kohlemine → Schmelzofen → Materiallager.
+- **Strom (Kapitel 6):** Kohlekraftwerke liefern je 10 Strom ins ganze Netz, solange sie Kohle haben. Elektrische Maschinen (⚡) laufen
+  anteilig langsamer, wenn der Bedarf das Angebot übersteigt. Oben steht Angebot/Bedarf.
+- **Werkstatt (U):** Turbo-Quellen und Turbo-Maschinen in drei Stufen (je +25 %), bezahlt mit Eisen.
+- **Rückgängig (Strg+Z):** nimmt den letzten Bau- oder Abriss-Strich zurück, inklusive Eisen.
+- **Produktion (P):** Tabelle aller hergestellten Items mit Rate pro Minute.
 - **Kohle als Brennstoff:** Ab Kapitel 2 braucht der Ofen fürs Toastbrot Kohle, der Grill ebenso (in der Ente auch der Glasofen).
 - **Quellen** erzeugen Rohstoffe, **Maschinen** verarbeiten sie nach Rezept. Maschinen nehmen Zutaten von allen Seiten an und geben nach vorn ab (weißer Pfeil).
 - Rezepte können mehrere Zutaten brauchen (Knetmaschine: Mehl + Wasser + Hefe) und mehrere Stück liefern (Schneider: 1 Toastbrot → 4 Scheiben).

@@ -50,11 +50,18 @@
   .tool .cost::before { content: '⛓ '; }
   .tool.poor { opacity: .45; }
   .tool kbd { margin-left: 6px; }
-  #topbar .stock { font-size: 13px; color: var(--muted); }
+  #topbar .stock, #topbar .power { font-size: 13px; color: var(--muted); }
+  #topbar .power b { color: #ffd166; }
+  #topbar .power.bad { color: #ff8a7a; }
+  .upgrades { display: grid; gap: 10px; margin-top: 16px; }
+  .upgrade { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; }
+  table.stats { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13.5px; }
+  table.stats th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  table.stats td { padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,.04); font-variant-numeric: tabular-nums; }
   #topbar .stock b { color: #cfd8e3; font-variant-numeric: tabular-nums; }
   .tool.erase { margin-top: 6px; }
   .row { display: flex; gap: 6px; }
-  .row .btn { flex: 1; }
+  .row .btn { flex: 1; white-space: nowrap; font-size: 12.5px; padding: 7px 6px; }
 
   /* Kopfzeile */
   #topbar { left: 50%; transform: translateX(-50%); top: 12px; display: flex; gap: 10px; align-items: center; padding: 6px 8px 6px 14px; }
@@ -153,12 +160,14 @@
   <h1>ABSURD INDUSTRIES<small>Das Sandwich-Imperium</small></h1>
   <div id="tabs"></div>
   <div id="tools"></div>
-  <div class="row"><button class="btn" id="btn-book">Rezeptbuch <kbd>B</kbd></button></div>
+  <div class="row"><button class="btn" id="btn-book">Rezepte <kbd>B</kbd></button><button class="btn" id="btn-shop">Werkstatt <kbd>U</kbd></button></div>
+  <div class="row"><button class="btn" id="btn-stats">Produktion <kbd>P</kbd></button></div>
   <div class="row"><button class="btn" id="btn-menu">Menü</button><button class="btn" id="btn-mute">Ton an</button></div>
 </div>
 <div id="topbar" class="panel">
   <span class="title" id="chapter-title"></span>
   <span class="time" id="time">0:00</span>
+  <span class="power" id="power" title="Strom: Angebot / Bedarf"></span>
   <span class="stock" title="Baukonto: Eisen aus dem Materiallager">⛓ <b id="stock">0</b> Eisen</span>
   <button class="btn speed" data-speed="0" title="Pause (Leertaste)">❚❚</button>
   <button class="btn speed active" data-speed="1">1×</button>
@@ -178,7 +187,7 @@
 <div id="tutorial" class="panel"></div>
 <div id="hint" class="panel">
   <b>Linksklick</b> bauen (ziehen für Bänder) · <b>R</b> drehen · <b>Shift+Klick</b> abreißen · <b>Q</b> Gebäude kopieren ·
-  <b>F</b> Sortierer-Filter · <b>Rechte Maustaste</b> Kamera · <b>WASD</b> verschieben · <b>Mausrad</b> Zoom · <b>Leertaste</b> Pause
+  <b>F</b> Sortierer-Filter · <b>Strg+Z</b> rückgängig · <b>U</b> Werkstatt · <b>P</b> Produktion · <b>Rechte Maustaste</b> Kamera · <b>WASD</b> verschieben · <b>Mausrad</b> Zoom · <b>Leertaste</b> Pause
 </div>
 <div id="toast" class="panel"></div>
 <div id="overlay"><div class="card" id="card"></div></div>
