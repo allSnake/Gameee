@@ -438,15 +438,71 @@ const tabTools = () => search
 
 function setTool(t) {
   tool = t;
-  if (t !== 'erase' && t !== 'upgrade') tab = BUILDINGS[t].cat;
+  if (BUILDINGS[t]) tab = BUILDINGS[t].cat;
   renderToolbar();
   makeGhost();
   renderInfo();
 }
 
+// ---------------------------------------------------------------- Blaupausen
+// Werkzeug „Kopieren“: Rechteck aufziehen -> clipboard; Werkzeug „Einfügen“: Vorschau folgt der Maus, Klick baut alles
+let clipboard = null;       // [{ kind, dx, dz, dir, filter, tier }]
+let selStart = null;
+const selBox = new THREE.Mesh(new THREE.BoxGeometry(1, 0.06, 1), new THREE.MeshBasicMaterial({ color: 0x3fa9ff, transparent: true, opacity: 0.3, depthWrite: false }));
+selBox.visible = false;
+scene.add(selBox);
+
+function showSelection(a, b) {
+  const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x), z0 = Math.min(a.z, b.z), z1 = Math.max(a.z, b.z);
+  selBox.scale.set(x1 - x0 + 1, 1, z1 - z0 + 1);
+  selBox.position.copy(cellPos((x0 + x1) / 2, (z0 + z1) / 2)).setY(0.05);
+  selBox.visible = true;
+}
+
+function copyArea(a, b) {
+  const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x), z0 = Math.min(a.z, b.z), z1 = Math.max(a.z, b.z);
+  const list = factory.list.filter(c => c.x >= x0 && c.x <= x1 && c.z >= z0 && c.z <= z1)
+    .map(c => ({ kind: c.kind, dx: c.x - x0, dz: c.z - z0, dir: c.dir, filter: c.filter, tier: c.tier || 0 }));
+  selBox.visible = false;
+  if (!list.length) { toast('Nichts ausgewählt', 1000); return; }
+  clipboard = list;
+  toast(`${list.length} Gebäude kopiert – klicke zum Einfügen, R dreht`, 2200);
+  setTool('paste');
+}
+
+function rotateClipboard() {
+  if (!clipboard) return;
+  const h = Math.max(...clipboard.map(c => c.dz));
+  clipboard = clipboard.map(c => ({ ...c, dx: h - c.dz, dz: c.dx, dir: (c.dir + 1) % 4 }));
+}
+
+const blueprintCost = () => clipboard.reduce((sum, c) => sum + totalCost(c), 0);
+
+function pasteAt(cell) {
+  if (!clipboard) return;
+  const cost = blueprintCost();
+  const freed = clipboard.reduce((sum, c) => { const o = factory.at(cell.x + c.dx, cell.z + c.dz); return sum + (o ? totalCost(o) : 0); }, 0);
+  if (cost - freed > progress.eisen) { noIron(cost - freed); return; }
+  if (clipboard.some(c => !factory.inBounds(cell.x + c.dx, cell.z + c.dz))) { toast('Passt hier nicht aufs Feld', 1200); return; }
+  for (const c of clipboard) restore(c.kind, cell.x + c.dx, cell.z + c.dz, c.dir, c.filter, Math.min(c.tier, content.maxTier));
+}
+
 function makeGhost() {
   if (ghost) scene.remove(ghost);
-  ghost = tool === 'erase' || tool === 'upgrade'
+  if (tool === 'paste' && clipboard) {
+    ghost = new THREE.Group();
+    for (const c of clipboard) {
+      const m = makeBuilding(c.kind, true);
+      m.position.set(c.dx, 0, c.dz);
+      m.rotation.y = -c.dir * Math.PI / 2;
+      ghost.add(m);
+    }
+    ghost.visible = false;
+    scene.add(ghost);
+    updateGhost();
+    return;
+  }
+  ghost = tool === 'erase' || tool === 'upgrade' || tool === 'copy'
     ? new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.3, 0.96), new THREE.MeshBasicMaterial({ color: tool === 'erase' ? 0xff4040 : 0x3fa9ff, transparent: true, opacity: 0.45 }))
     : makeBuilding(tool, true);
   ghost.visible = false;
@@ -460,7 +516,8 @@ function updateGhost() {
   ghost.visible = !!hover && !overlayOpen;
   if (!hover) return;
   ghost.position.copy(cellPos(hover.x, hover.z));
-  if (tool === 'erase' || tool === 'upgrade') ghost.position.y = 0.15;
+  if (tool === 'erase' || tool === 'upgrade' || tool === 'copy') ghost.position.y = 0.15;
+  else if (tool === 'paste') ghost.position.y = 0.02;
   else ghost.rotation.y = -buildDir * Math.PI / 2;
 }
 
@@ -498,6 +555,8 @@ canvas.addEventListener('pointerdown', ev => {
   if (ev.button !== 0 || overlayOpen) return;
   const cell = pickCell(ev);
   if (!cell) return;
+  if (tool === 'copy') { selStart = cell; showSelection(cell, cell); return; }
+  if (tool === 'paste') { beginStroke(); pasteAt(cell); endStroke(); return; }
   painting = true;
   lastPaint = null;
   beginStroke();
@@ -508,10 +567,14 @@ canvas.addEventListener('pointermove', ev => {
   hover = pickCell(ev);
   updateGhost();
   if (!prev || !hover || prev.x !== hover.x || prev.z !== hover.z) renderInfo();
+  if (selStart && hover) showSelection(selStart, hover);
   if (painting && hover && !(lastPaint && lastPaint.x === hover.x && lastPaint.z === hover.z)) paint(hover, ev);
 });
 canvas.addEventListener('pointerleave', () => { hover = null; updateGhost(); renderInfo(); });
-addEventListener('pointerup', () => { painting = false; lastPaint = null; endStroke(); });
+addEventListener('pointerup', () => {
+  if (selStart) { const end = hover || selStart; const a = selStart; selStart = null; copyArea(a, end); }
+  painting = false; lastPaint = null; endStroke();
+});
 canvas.addEventListener('contextmenu', ev => ev.preventDefault());
 
 const keys = new Set();
@@ -530,7 +593,14 @@ addEventListener('keydown', ev => {
   if (k === 'z' && (ev.ctrlKey || ev.metaKey) && !overlayOpen) { ev.preventDefault(); undo(); return; }
   if (overlayOpen || ev.repeat) return;
   const hovered = hover && factory.at(hover.x, hover.z);
-  if (k === 'r') {
+  if (k === 'r' && tool === 'paste') {
+    rotateClipboard();
+    makeGhost();
+  } else if (k === 'c' && !ev.ctrlKey && !ev.metaKey) {
+    setTool('copy');
+  } else if (k === 'v' && !ev.ctrlKey && !ev.metaKey) {
+    if (clipboard) setTool('paste'); else toast('Erst mit C einen Bereich kopieren', 1400);
+  } else if (k === 'r') {
     if (hovered) rotateCell(hovered);
     buildDir = (buildDir + 1) % 4;
     updateGhost();
@@ -607,6 +677,8 @@ function renderStock() {
 
 function describeKind(kind) {
   if (kind === 'upgrade') return upgradeInfo();
+  if (kind === 'copy') return '<b>Kopieren</b><br>Ziehe ein Rechteck über Gebäude, um sie als Blaupause zu kopieren.';
+  if (kind === 'paste') return `<b>Einfügen</b><br>Klicke, um die Blaupause (${clipboard ? clipboard.length : 0} Gebäude, ⛓ ${clipboard ? blueprintCost() : 0}) zu bauen. R dreht sie. Rückgängig mit Strg+Z.`;
   if (kind === 'erase') return '<b>Abriss</b><br>Klicke oder ziehe über Gebäude, um sie zu entfernen. Du bekommst das Eisen zurück.';
   return describeKindBase(kind) + `<br><span class="st">Kosten: ${costOf(kind)} Eisen</span>`;
 }
@@ -690,6 +762,8 @@ function renderToolbar() {
   if (!list.length) el.innerHTML = '<span class="sub" style="padding:18px 8px">Nichts gefunden.</span>';
   el.appendChild(toolTile('erase', null, { label: 'Abriss  (0)', icon: '✖', cls: 'sep' }));
   if (content.maxTier > 0) el.appendChild(toolTile('upgrade', null, { label: 'Aufrüsten (E)', icon: '⇧' }));
+  el.appendChild(toolTile('copy', null, { label: 'Kopieren (C)', icon: '⧉' }));
+  if (clipboard) el.appendChild(toolTile('paste', null, { label: `Einfügen (V)`, icon: '⎘', cost: blueprintCost() }));
   el.querySelectorAll('.ph').forEach((ph, i) => { ph.style.background = i === 0 ? 'rgba(255,64,64,.18)' : 'rgba(63,169,255,.18)'; ph.style.color = i === 0 ? '#ff8a7a' : '#8ecae6'; });
   const act = el.querySelector('.tool.active');
   if (act) act.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -1000,7 +1074,7 @@ function showHelp() {
   const keys = [
     ['Linksklick', 'Bauen – bei Bändern gedrückt halten und ziehen'], ['R', 'Drehen (vor dem Bauen oder das Gebäude unter der Maus)'],
     ['Shift + Klick', 'Abreißen (Eisen kommt zurück)'], ['0', 'Werkzeug Abriss'], ['E', 'Werkzeug Aufrüsten (ab Industrialisierung)'],
-    ['1 – 9', 'Gebäude der aktuellen Kategorie'], ['/', 'Gebäude suchen'], ['Q', 'Gebäude unter der Maus kopieren'],
+    ['1 – 9', 'Gebäude der aktuellen Kategorie'], ['C / V', 'Bereich kopieren (Rechteck ziehen) / Blaupause einfügen, R dreht sie'], ['/', 'Gebäude suchen'], ['Q', 'Gebäude unter der Maus kopieren'],
     ['F / Shift+F', 'Sortierer-Filter wechseln / neu lernen'], ['Strg + Z', 'Letzten Strich rückgängig machen'],
     ['B', 'Rezeptbuch'], ['U', 'Werkstatt'], ['P', 'Produktion'], ['Leertaste', 'Pause'], ['Esc', 'Menü'],
     ['Rechte Maustaste', 'Kamera drehen'], ['WASD', 'Kamera verschieben'], ['Mausrad', 'Zoom'],

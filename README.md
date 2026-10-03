@@ -46,6 +46,7 @@ URL-Parameter zum Ausprobieren:
 - **Hauptmenü:** Zeitleiste der vier Epochen mit allen Kapiteln, Sternen und Bestzeiten; rechts die Details zum gewählten Kapitel (Bestellung, Wertung, Spielen / Fortsetzen / Neu beginnen).
 - **Bauleiste unten:** Kategorien, Vorschaubilder aller Gebäude mit Preis, Suche (Taste `/`, findet auch über Produkte – „gurk“ findet Gurkenbeet und Einmachstation).
 - **Rezeptbuch (B):** links alle Items mit Suche (Bestellung, Zwischenprodukte, Rohstoffe), rechts Herstellung, Verwendung und der komplette Weg – alles anklickbar.
+- **Blaupausen (C / V):** Rechteck über eine fertige Kette ziehen kopiert sie samt Richtung, Filter und Antriebsstufe; die Vorschau folgt der Maus, R dreht, Klick baut (kostet Eisen, Strg+Z macht es rückgängig).
 - **Hilfe (H):** alle Tasten auf einen Blick.
 - Bewusst minimalistischer Look: matte Farben, heller Boden, weiche Schatten.
 
