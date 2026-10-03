@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from './vendor/three/OrbitControls.js';
-import { ITEMS, BUILDINGS, CHAPTERS, CAMPAIGN, TICK, chapterContent, costOf } from './data.js';
+import { ITEMS, BUILDINGS, CHAPTERS, CAMPAIGN, ERAS, TIERS, TICK, chapterContent, costOf, eraOf, isGenerator, isUpgradable } from './data.js';
 import { Factory, DIRS, isCarrier, isMachine, isSource } from './sim.js';
 import { planChapter } from './layout.js';
 import { mat, part, makeItem, makeBuilding, makeEndProject } from './models.js';
@@ -135,7 +135,7 @@ const hooks = {
 
 // ================================================================ Gebäude
 function attachMesh(cell) {
-  const mesh = makeBuilding(cell.kind);
+  const mesh = makeBuilding(cell.kind, false, cell.tier || 0);
   mesh.position.copy(cellPos(cell.x, cell.z));
   mesh.rotation.y = -cell.dir * Math.PI / 2;
   cell.mesh = mesh;
@@ -152,6 +152,34 @@ function detachMesh(cell) {
   if (cell?.filterMesh) scene.remove(cell.filterMesh);
 }
 
+// Was ein Gebäude insgesamt gekostet hat (inkl. Aufrüstungen) – so viel gibt es beim Abriss zurück
+const totalCost = (c) => costOf(c.kind) + TIERS.slice(1, (c.tier || 0) + 1).reduce((s, t) => s + t.cost, 0);
+
+function refreshMesh(cell) {
+  detachMesh(cell);
+  attachMesh(cell);
+}
+
+function upgradeCell(cell, { silent = false } = {}) {
+  if (!cell) return false;
+  if (!isUpgradable(cell.kind)) { if (!silent) toast('Dieses Gebäude lässt sich nicht aufrüsten', 1200); return false; }
+  const next = (cell.tier || 0) + 1;
+  if (next > content.maxTier || next >= TIERS.length) {
+    if (!silent) toast(content.maxTier === 0 ? 'Aufrüsten gibt es erst ab der Industrialisierung' : `${TIERS[cell.tier].name} ist das Maximum dieser Epoche`, 1500);
+    return false;
+  }
+  const cost = TIERS[next].cost;
+  if (cost > progress.eisen) { noIron(cost); return false; }
+  if (stroke) stroke.push({ type: 'tier', x: cell.x, z: cell.z, from: cell.tier || 0 });
+  progress.eisen -= cost;
+  cell.tier = next;
+  refreshMesh(cell);
+  renderStock();
+  sfx.partDone();
+  scheduleSave();
+  return true;
+}
+
 function placeBuilding(kind, x, z, dir, { silent = false } = {}) {
   if (!factory.inBounds(x, z) || !content.buildings.includes(kind)) return null;
   const old = factory.at(x, z);
@@ -159,9 +187,9 @@ function placeBuilding(kind, x, z, dir, { silent = false } = {}) {
     if (old.dir !== dir) { old.dir = dir; old.mesh.rotation.y = -dir * Math.PI / 2; scheduleSave(); }
     return old;
   }
-  const price = costOf(kind) - (old ? costOf(old.kind) : 0);
+  const price = costOf(kind) - (old ? totalCost(old) : 0);
   if (!silent && price > progress.eisen) { noIron(costOf(kind)); return null; }
-  if (!silent && stroke) stroke.push({ type: 'place', kind, x, z, dir, old: old ? { kind: old.kind, dir: old.dir, filter: old.filter } : null });
+  if (!silent && stroke) stroke.push({ type: 'place', kind, x, z, dir, old: old ? { kind: old.kind, dir: old.dir, filter: old.filter, tier: old.tier } : null });
   detachMesh(old);
   const cell = factory.place(kind, x, z, dir);
   attachMesh(cell);
@@ -181,8 +209,8 @@ function removeBuilding(x, z, { silent = false } = {}) {
   if (!cell) return;
   detachMesh(cell);
   if (!silent) {
-    if (stroke) stroke.push({ type: 'remove', kind: cell.kind, x, z, dir: cell.dir, filter: cell.filter });
-    progress.eisen += costOf(cell.kind);
+    if (stroke) stroke.push({ type: 'remove', kind: cell.kind, x, z, dir: cell.dir, filter: cell.filter, tier: cell.tier });
+    progress.eisen += totalCost(cell);
     renderStock();
     sfx.remove();
     scheduleSave();
@@ -197,16 +225,26 @@ function endStroke() {
   if (stroke && stroke.length) { history.push(stroke); if (history.length > 60) history.shift(); }
   stroke = null;
 }
+function restore(kind, x, z, dir, filter, tier) {
+  const c = placeBuilding(kind, x, z, dir);
+  if (!c) return;
+  c.filter = filter ?? null;
+  const extra = totalCost({ kind, tier: tier || 0 }) - costOf(kind);
+  if (tier && extra <= progress.eisen) { c.tier = tier; progress.eisen -= extra; refreshMesh(c); renderStock(); }
+}
+
 function undo() {
   const last = history.pop();
   if (!last) { toast('Nichts zum Rückgängigmachen', 1200); return; }
   for (const a of [...last].reverse()) {
-    if (a.type === 'place') {
+    if (a.type === 'tier') {
+      const c = factory.at(a.x, a.z);
+      if (c) { progress.eisen += totalCost(c); c.tier = a.from; progress.eisen -= totalCost(c); refreshMesh(c); renderStock(); }
+    } else if (a.type === 'place') {
       removeBuilding(a.x, a.z);
-      if (a.old) { const c = placeBuilding(a.old.kind, a.x, a.z, a.old.dir); if (c) c.filter = a.old.filter ?? null; }
+      if (a.old) restore(a.old.kind, a.x, a.z, a.old.dir, a.old.filter, a.old.tier);
     } else {
-      const c = placeBuilding(a.kind, a.x, a.z, a.dir);
-      if (c) c.filter = a.filter ?? null;
+      restore(a.kind, a.x, a.z, a.dir, a.filter, a.tier);
     }
   }
   toast('Rückgängig', 900);
@@ -391,7 +429,7 @@ const tabTools = () => content.buildings.filter(k => BUILDINGS[k].cat === tab);
 
 function setTool(t) {
   tool = t;
-  if (t !== 'erase') tab = BUILDINGS[t].cat;
+  if (t !== 'erase' && t !== 'upgrade') tab = BUILDINGS[t].cat;
   renderToolbar();
   makeGhost();
   renderInfo();
@@ -399,8 +437,8 @@ function setTool(t) {
 
 function makeGhost() {
   if (ghost) scene.remove(ghost);
-  ghost = tool === 'erase'
-    ? new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.3, 0.96), new THREE.MeshBasicMaterial({ color: 0xff4040, transparent: true, opacity: 0.45 }))
+  ghost = tool === 'erase' || tool === 'upgrade'
+    ? new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.3, 0.96), new THREE.MeshBasicMaterial({ color: tool === 'erase' ? 0xff4040 : 0x3fa9ff, transparent: true, opacity: 0.45 }))
     : makeBuilding(tool, true);
   ghost.visible = false;
   ghost.traverse(o => { o.castShadow = false; });
@@ -413,7 +451,7 @@ function updateGhost() {
   ghost.visible = !!hover && !overlayOpen;
   if (!hover) return;
   ghost.position.copy(cellPos(hover.x, hover.z));
-  if (tool === 'erase') ghost.position.y = 0.15;
+  if (tool === 'erase' || tool === 'upgrade') ghost.position.y = 0.15;
   else ghost.rotation.y = -buildDir * Math.PI / 2;
 }
 
@@ -431,6 +469,7 @@ let lastPaint = null;
 
 function paint(cell, ev) {
   if (ev.shiftKey || tool === 'erase') { removeBuilding(cell.x, cell.z); lastPaint = cell; return; }
+  if (tool === 'upgrade') { upgradeCell(factory.at(cell.x, cell.z)); lastPaint = cell; renderInfo(); return; }
   if ((tool === 'belt' || tool === 'bruecke') && lastPaint && (lastPaint.x !== cell.x || lastPaint.z !== cell.z)) {
     // Beim Ziehen zeigt das vorherige Band zum neuen
     const d = DIRS.findIndex(([ax, az]) => ax === cell.x - lastPaint.x && az === cell.z - lastPaint.z);
@@ -490,6 +529,8 @@ addEventListener('keydown', ev => {
     setSpeed(speed === 0 ? 1 : 0);
   } else if (k === '0' || k === 'x') {
     setTool('erase');
+  } else if (k === 'e') {
+    if (content.maxTier > 0) setTool('upgrade'); else toast('Aufrüsten gibt es erst ab der Industrialisierung', 1500);
   } else if (/^[1-9]$/.test(k)) {
     const t = tabTools()[Number(k) - 1];
     if (t) setTool(t);
@@ -550,29 +591,41 @@ function renderStock() {
 }
 
 function describeKind(kind) {
+  if (kind === 'upgrade') return upgradeInfo();
   return describeKindBase(kind) + `<br><span class="st">Kosten: ${costOf(kind)} Eisen</span>`;
 }
 
 function describeKindBase(kind) {
   const b = BUILDINGS[kind];
   if (b.cat === 'quelle') return `<b>${b.name}</b><br>Erzeugt ${itemName(b.out)} alle ${secs(b.ticks)}.`;
-  if (kind === 'kraftwerk') return `<b>${b.name}</b><br>Kohle → <b>⚡ ${b.supply} Strom</b><br><span class="st">${b.info}</span>`;
+  if (isGenerator(kind)) return `<b>${b.name}</b><br>${b.fuel ? Object.keys(b.fuel).map(itemName).join(' + ') : 'Sonnenlicht'} → <b>⚡ ${b.supply} Energie</b><br><span class="st">${b.info}</span>`;
   if (b.cat === 'maschine') return `<b>${b.name}</b>${b.power ? ` <span class="st">⚡ ${b.power} Strom</span>` : ''}<br>${(content.byMachine[kind] || []).map(recipeLine).join('<br>')}`;
   return `<b>${b.name}</b><br>${b.info}`;
 }
 
+function upgradeInfo() {
+  const lines = TIERS.slice(1, content.maxTier + 1).map(t => `${t.name}: ×${t.speed} Tempo, ⚡ ${t.power} Energie, ⛓ ${t.cost} Eisen`);
+  return `<b>Aufrüsten</b><br>Klicke auf eine Quelle oder Maschine, um sie eine Stufe hochzurüsten.<br><span class="st">${lines.join('<br>')}</span>`;
+}
+
 function describeCell(c) {
   let html = describeKind(c.kind);
+  if (isUpgradable(c.kind) && (content.maxTier > 0 || c.tier)) {
+    const t = TIERS[c.tier || 0];
+    const next = TIERS[(c.tier || 0) + 1];
+    html += `<br><span class="st">Antrieb: ${t.name} (×${t.speed}${t.power ? `, ⚡ ${t.power}` : ''})` +
+      (next && (c.tier || 0) < content.maxTier ? ` · E: ${next.name} für ⛓ ${next.cost}` : '') + '</span>';
+  }
   if (isMachine(c.kind)) {
     const st = factory.status(c);
     const inv = Object.entries(c.inv).filter(([, v]) => v > 0).map(([k, v]) => `${v}× ${itemName(k)}`);
-    if (c.kind === 'kraftwerk') html += `<br><span class="st ${st.state === 'busy' ? 'good' : st.state === 'waiting' ? 'bad' : ''}">${st.state === 'busy' ? 'brennt' : st.state === 'waiting' ? 'keine Kohle' : 'bereit (kein Bedarf)'} · Kohle: ${st.fuel}</span>`;
+    if (isGenerator(c.kind)) html += `<br><span class="st ${st.state === 'busy' ? 'good' : st.state === 'waiting' ? 'bad' : ''}">${st.state === 'busy' ? 'liefert Energie' : st.state === 'waiting' ? 'braucht: ' + st.missing.map(itemName).join(', ') : 'bereit (kein Bedarf)'}</span>`;
     else if (st.state === 'lowpower') html += `<br><span class="st bad">zu wenig Strom – läuft mit ${Math.round(factory.power.ratio * 100)} %</span>`;
     else if (st.state === 'busy') html += `<br><span class="st good">arbeitet: ${itemName(st.recipe.out)} ${Math.round(st.progress * 100)} %</span>`;
     else if (st.state === 'blocked') html += '<br><span class="st bad">Ausgang blockiert – nichts nimmt das Produkt an</span>';
     else if (st.state === 'waiting') html += `<br><span class="st bad">wartet auf: ${st.missing.map(itemName).join(', ')}</span>`;
     else html += '<br><span class="st">wartet auf Zutaten</span>';
-    if (inv.length && c.kind !== 'kraftwerk') html += `<br><span class="st">Lager: ${inv.join(', ')}</span>`;
+    if (inv.length && !isGenerator(c.kind)) html += `<br><span class="st">Lager: ${inv.join(', ')}</span>`;
   } else if (isSource(c.kind)) {
     if (factory.status(c).state === 'blocked') html += '<br><span class="st bad">Ausgang blockiert</span>';
   } else {
@@ -589,6 +642,7 @@ function renderInfo() {
   const c = hover && factory.at(hover.x, hover.z);
   if (c) el.innerHTML = describeCell(c);
   else if (tool === 'erase') el.innerHTML = '<b>Abriss</b><br>Klicke oder ziehe über Gebäude, um sie zu entfernen.';
+  else if (tool === 'upgrade') el.innerHTML = upgradeInfo();
   else el.innerHTML = describeKind(tool);
 }
 
@@ -614,6 +668,15 @@ function renderToolbar() {
   e.innerHTML = '<span class="dot" style="background:#ff4040"></span>Abriss<kbd>0</kbd>';
   e.addEventListener('click', () => setTool('erase'));
   el.appendChild(e);
+  if (content.maxTier > 0) {
+    const u = document.createElement('button');
+    u.className = 'tool' + (tool === 'upgrade' ? ' active' : '');
+    u.innerHTML = '<span class="dot" style="background:#3fa9ff"></span>Aufrüsten<kbd>E</kbd>';
+    u.addEventListener('click', () => setTool('upgrade'));
+    u.addEventListener('mouseenter', () => { infoOverride = 'upgrade'; renderInfo(); });
+    u.addEventListener('mouseleave', () => { infoOverride = null; renderInfo(); });
+    el.appendChild(u);
+  }
 }
 
 function renderGoal() {
@@ -643,7 +706,7 @@ function renderStarTarget() {
 let lastShownSecond = -1;
 function renderPower() {
   const el = $('power');
-  const on = content.buildings.includes('kraftwerk');
+  const on = content.buildings.some(isGenerator);
   el.style.display = on ? '' : 'none';
   if (!on) return;
   const { supply, demand } = factory.power;
@@ -699,7 +762,7 @@ function isUnlocked(id) {
 }
 
 function showMenu() {
-  const cards = [...CAMPAIGN, ...Object.keys(CHAPTERS).filter(id => CHAPTERS[id].bonus)].map((id, i) => {
+  const card = (id, i) => {
     const ch = CHAPTERS[id];
     const rec = meta.completed[id];
     const open = isUnlocked(id);
@@ -709,11 +772,14 @@ function showMenu() {
     return `<button class="chapter${open ? '' : ' locked'}" data-ch="${id}" ${open ? '' : 'disabled'}>
       <span class="num">${label}${id === chapterId ? ' · aktuell' : ''}</span><span class="name">${ch.title.replace('Bonus: ', '')}</span>
       <span class="desc">${ch.story}</span><span class="foot">${foot}</span></button>`;
-  }).join('');
+  };
+  const cards = ERAS.map((era, e) => `<h3 class="era">Epoche ${e + 1} · ${era.name}</h3><p class="sub">${era.intro}</p>
+      <div class="chapters">${era.chapters.map(id => card(id, CAMPAIGN.indexOf(id))).join('')}</div>`).join('') +
+    `<h3 class="era">Bonus</h3><div class="chapters">${Object.keys(CHAPTERS).filter(id => CHAPTERS[id].bonus).map(id => card(id, 0)).join('')}</div>`;
   openOverlay('menu', `
     <p class="logo">ABSURD INDUSTRIES</p>
     <p class="sub">Das Sandwich-Imperium – vollautomatische Fabriken für völlig unnötige Sandwiches.</p>
-    <div class="chapters">${cards}</div>
+    ${cards}
     <div class="actions" style="justify-content:space-between;align-items:center">
       <button class="linkish" id="reset-all">Gesamten Fortschritt löschen</button>
       ${chapterId ? '<button class="btn primary" id="menu-back">Weiterspielen</button>' : ''}
@@ -737,8 +803,9 @@ function showIntro() {
   const ch = content.chapter;
   const newOnes = [...content.isNew].map(k => `<span class="chip"><span class="dot" style="background:${BUILDINGS[k].color}"></span>${bName(k)}</span>`).join('');
   openOverlay('intro', `
-    <p class="sub">${ch.bonus ? 'Bonus-Kapitel' : `Kapitel ${CAMPAIGN.indexOf(chapterId) + 1} von ${CAMPAIGN.length}`}</p>
+    <p class="sub">${ch.bonus ? 'Bonus-Kapitel' : `Kapitel ${CAMPAIGN.indexOf(chapterId) + 1} von ${CAMPAIGN.length} · Epoche: ${content.era.name}`}</p>
     <h2>${ch.title}</h2>
+    ${content.era && content.era.chapters[0] === chapterId ? `<p class="era-banner">Neue Epoche: <b>${content.era.name}</b> – ${content.era.intro}</p>` : ''}
     <p>${ch.story}</p>
     <h3>Bestellung</h3>
     <div class="chips">${ch.parts.map(p => chip(p.item, `${p.need}× `)).join('')}</div>
@@ -873,7 +940,7 @@ function showStats() {
     const part = content.parts.find(p => p.item === item);
     return `<tr><td>${chip(item)}</td><td>${total}</td><td>${rate.toFixed(1).replace('.', ',')}</td><td>${part ? `${Math.min(progress.delivered[item] || 0, part.need)}/${part.need}` : ''}</td></tr>`;
   }).join('');
-  const pw = content.buildings.includes('kraftwerk') ? `<p class="sub">Strom: ⚡ ${factory.power.supply} Angebot, ${factory.power.demand} Bedarf</p>` : '';
+  const pw = content.buildings.some(isGenerator) ? `<p class="sub">Energie: ⚡ ${factory.power.supply} Angebot, ${factory.power.demand} Bedarf</p>` : '';
   openOverlay('stats', `
     <h2>Produktion</h2>
     <p class="sub">Hergestellte Items seit dem Laden des Kapitels, Rate über die letzte Minute Spielzeit.</p>${pw}
@@ -918,9 +985,10 @@ function loadChapter(id, { fresh = false } = {}) {
   progress = newProgress();
   const saved = fresh ? null : loadSave(id);
   if (saved) {
-    for (const [kind, x, z, dir, filter] of saved.b || []) {
+    for (const [kind, x, z, dir, filter, tier] of saved.b || []) {
       const c = placeBuilding(kind, x, z, dir, { silent: true });
       if (c && filter !== undefined) c.filter = filter;
+      if (c && tier) { c.tier = Math.min(tier, content.maxTier); refreshMesh(c); }
     }
     Object.assign(progress, saved.p || {});
   }

@@ -124,6 +124,33 @@ function run(f, ticks) { for (let i = 0; i < ticks; i++) f.tick(); }
   ok(b.alu > a.alu, `Upgrade bringt nichts (${b.alu} vs ${a.alu})`);
   ok(a.f.power.supply > 0, 'Kraftwerk liefert keinen Strom');
 }
+{ // Epochen: Dampfkessel braucht Kohle + Wasser, Dampfbetrieb verdoppelt das Tempo, Solarpark braucht nichts
+  const c = chapterContent('club');
+  const make = (tier, boiler) => {
+    const f = new Factory(10, c);
+    let n = 0;
+    f.hooks.trash = () => n++;
+    const src = f.place('weizenfeld', 1, 5, 0); src.tier = tier;
+    f.place('muelleimer', 2, 5, 0);
+    if (boiler) { f.place('kohlemine', 5, 1, 1); f.place('brunnen', 4, 2, 0); f.place('dampfkessel', 5, 2, 0); }
+    run(f, 300);
+    return n;
+  };
+  const hand = make(0, false), steamNoBoiler = make(1, false), steam = make(1, true);
+  ok(steamNoBoiler === 0, `Dampfbetrieb ohne Kessel läuft (${steamNoBoiler})`);
+  ok(steam > hand * 1.6, `Dampfbetrieb nicht schneller (${steam} vs ${hand})`);
+  const f = new Factory(10, chapterContent('labor'));
+  f.place('solarpark', 1, 1, 0); f.place('luftansauger', 3, 3, 0); f.place('n2abscheider', 4, 3, 0);
+  let n2 = 0; f.hooks.trash = () => n2++; f.place('muelleimer', 5, 3, 0);
+  run(f, 200);
+  ok(n2 > 10, `Solarpark versorgt Labor nicht (${n2})`);
+}
+{ // Chemie-Ära: Felder sind weg, Weizen kommt aus dem Synthesizer
+  const c = chapterContent('nichts');
+  ok(!c.buildings.includes('weizenfeld') && !c.buildings.includes('gewaechshaus'), 'Felder in der Chemie-Ära noch da');
+  ok(c.producer.weizen.machine === 'getreidesynth' && c.producer.tomate.machine === 'fruchtsynth' && c.producer.zucker.machine === 'kristallisator', 'Synthese-Hersteller falsch');
+  ok(chapterContent('weltraum').producer.weizen.source === 'weizenfeld', 'Weltraum-Kapitel verliert Weizenfeld');
+}
 { // Stau: Endmontage nimmt keine Nicht-Teile an
   const f = new Factory(8, chapterContent('butterbrot'));
   f.place('weizenfeld', 0, 0, 0); f.place('belt', 1, 0, 0); f.place('sink', 2, 0, 0);

@@ -252,6 +252,12 @@ function sourceDecor(kind, g, add) {
       for (const [x, z] of [[0.3, 0.32], [0.2, -0.34], [-0.3, 0.3]]) add('box', rock, 0.16, 0.12, 0.16, x, 0.26, z, {}, false);
       break;
     }
+    case 'luftansauger':
+      add('box', 0xcfd6dd, 0.94, 0.16, 0.94, 0, 0.08, 0);
+      add('cyl', 0xe9eef2, 0.6, 0.5, 0.6, -0.08, 0.41, 0);
+      named(add('box', 0x55606e, 0.55, 0.04, 0.1, -0.08, 0.7, 0, {}, false), 'spin', 'y');
+      add('cyl', 0x9aa7b8, 0.66, 0.04, 0.66, -0.08, 0.68, 0, { metalness: 0.6 }, false);
+      break;
     case 'gummibaum':
       soil();
       add('cyl', 0x3a3128, 0.14, 0.7, 0.14, -0.05, 0.6, 0);
@@ -411,6 +417,22 @@ function machineDecor(kind, g, add) {
       add('cyl', 0x555a62, 0.16, 0.6, 0.16, -0.3, 1.1, -0.28);
       named(add('box', 0xffa040, 0.24, 0.08, 0.16, 0.3, 0.3, 0, add.glow(0xff8a00), false), 'bob');
       break;
+    case 'dampfkessel':
+      add('box', 0x5a3a2a, 0.92, 0.18, 0.92, 0, 0.09, 0);
+      add('cyl', 0xb08d57, 0.62, 0.8, 0.62, -0.05, 0.55, 0, { metalness: 0.5 }).rotation.x = Math.PI / 2;
+      for (const z of [-0.3, 0, 0.3]) add('cyl', 0x6b5a3a, 0.66, 0.04, 0.66, -0.05, 0.55, z, { metalness: 0.6 }, false).rotation.x = Math.PI / 2;
+      add('cyl', 0x3a3028, 0.14, 0.6, 0.14, 0.2, 1.0, -0.2);
+      add('box', 0x2a2018, 0.2, 0.18, 0.06, 0.25, 0.3, 0.47, add.glow(0xff6a00), false);
+      named(add('sphere', 0xe8e8ee, 0.28, 0.28, 0.28, 0.2, 1.4, -0.2, { transparent: true, opacity: 0.7 }, false), 'bob');
+      break;
+    case 'solarpark':
+      add('box', 0x5c9e45, 0.94, 0.1, 0.94, 0, 0.05, 0);
+      for (const z of [-0.22, 0.22]) {
+        add('box', 0x55606e, 0.05, 0.25, 0.05, 0, 0.2, z, {}, false);
+        const pnl = add('box', 0x1f3f78, 0.8, 0.03, 0.38, 0, 0.36, z, { metalness: 0.6, roughness: 0.3, emissive: 0x0a1a40, emissiveIntensity: 0.6 });
+        pnl.rotation.z = 0.35;
+      }
+      break;
     case 'kraftwerk':
       add('box', 0x3b414c, 0.92, 0.5, 0.92, 0, 0.25, 0);
       add('cyl', 0x8b919d, 0.42, 0.9, 0.42, -0.2, 0.9, -0.18);
@@ -456,13 +478,49 @@ function machineDecor(kind, g, add) {
   }
 }
 
-export function makeBuilding(kind, ghost = false) {
+// Laboranlage aus Baukasten: weißer Sockel, Tanks mit farbiger Flüssigkeit, Rohre; [farbe, variante]
+function labDecor(spec, add) {
+  const [liquid, variant] = spec;
+  add('box', 0xe9eef2, 0.92, 0.22, 0.92, 0, 0.11, 0);
+  add('box', 0x9aa7b8, 0.92, 0.04, 0.92, 0, 0.24, 0, { metalness: 0.5 }, false);
+  const tanks = variant === 1 ? [[-0.12, 0, 0.5, 0.55]] : variant === 2 ? [[-0.2, -0.2, 0.36, 0.6], [-0.2, 0.2, 0.36, 0.45]] : [[-0.25, -0.22, 0.3, 0.7], [0.0, 0.2, 0.32, 0.5], [-0.3, 0.24, 0.22, 0.35]];
+  for (const [x, z, d, h] of tanks) {
+    add('cyl', 0xdfe8ee, d + 0.04, h, d + 0.04, x, 0.26 + h / 2, z, { transparent: true, opacity: 0.35, roughness: 0.1 }, false);
+    add('cyl', liquid, d - 0.02, h * 0.7, d - 0.02, x, 0.26 + h * 0.35, z, { emissive: liquid, emissiveIntensity: 0.25 }, false);
+    add('cyl', 0x9aa7b8, d + 0.06, 0.04, d + 0.06, x, 0.27 + h, z, { metalness: 0.7 }, false);
+  }
+  add('cyl', 0x9aa7b8, 0.05, 0.05, 0.6, 0.15, 0.6, 0, { metalness: 0.7 }, false).rotation.x = Math.PI / 2;
+  add('box', 0x2a2f36, 0.22, 0.26, 0.06, 0.25, 0.4, -0.38);
+  named(add('box', liquid, 0.14, 0.05, 0.02, 0.25, 0.45, -0.35, { emissive: liquid, emissiveIntensity: 1 }, false), 'bob');
+}
+
+// Aufbauten für Antriebsstufen: Dampf (Messing + Schornstein), Elektro (Kabel + blaues Leuchtband)
+export function addTierDecor(g, tier) {
+  if (!tier) return;
+  const add = kit(g, false);
+  if (tier === 1) {
+    add('cyl', 0xb08d57, 0.98, 0.05, 0.98, 0, 0.03, 0, { metalness: 0.6 }, false);
+    add('cyl', 0x5a4a3a, 0.12, 0.55, 0.12, -0.36, 0.6, 0.36);
+    add('cyl', 0xb08d57, 0.15, 0.06, 0.15, -0.36, 0.9, 0.36, { metalness: 0.6 }, false);
+    named(add('sphere', 0xd8d8de, 0.18, 0.18, 0.18, -0.36, 1.02, 0.36, { transparent: true, opacity: 0.6 }, false), 'bob');
+  } else {
+    add('box', 0x3fa9ff, 0.98, 0.04, 0.98, 0, 0.02, 0, { emissive: 0x3fa9ff, emissiveIntensity: 0.8 }, false);
+    add('box', 0x2a2f36, 0.08, 0.5, 0.08, -0.4, 0.3, 0.4);
+    add('box', 0xffd166, 0.1, 0.16, 0.03, -0.4, 0.5, 0.36, { emissive: 0xffd166, emissiveIntensity: 0.9 }, false);
+  }
+}
+
+export function makeBuilding(kind, ghost = false, tier = 0) {
   const g = new THREE.Group();
   const add = kit(g, ghost);
-  const cat = BUILDINGS[kind].cat;
-  if (cat === 'logistik') logisticsDecor(kind, g, add);
-  else if (cat === 'quelle') { sourceDecor(kind, g, add); g.add(arrow(add, 0.46, 0.18)); }
-  else { machineDecor(kind, g, add); g.add(arrow(add, 0.48, 0.18)); }
+  const b = BUILDINGS[kind];
+  if (b.cat === 'logistik') logisticsDecor(kind, g, add);
+  else if (b.cat === 'quelle') { sourceDecor(kind, g, add); g.add(arrow(add, 0.46, 0.18)); }
+  else {
+    if (b.lab) labDecor(b.lab, add); else machineDecor(kind, g, add);
+    if (!b.supply) g.add(arrow(add, 0.48, 0.18));
+  }
+  addTierDecor(g, tier);
   return g;
 }
 
@@ -488,6 +546,10 @@ const SHOWCASES = {
   blt: [['toast', 'toastscheibe'], ['sauce', 'mayo', 0xfff8dc], ['leaf', 'salat'], ['tomato', 'tomatenscheibe'], ['bacon', 'speck'], ['bacon', 'speck'], ['toast', 'toastscheibe']],
   club: [['toast', 'toastscheibe'], ['sauce', 'mayo', 0xfff8dc], ['leaf', 'salat'], ['chicken', 'grillhaehnchen'], ['toast', 'toastscheibe'],
     ['bacon', 'speck'], ['tomato', 'tomatenscheibe'], ['pickle', 'essiggurke'], ['toast', 'toastscheibe'], ['pick', 'zahnstocher']],
+  labor: [['toast', 'toastscheibe'], ['spread', 'butter', 0xffe27a], ['cheese', 'kaese'], ['bacon', 'speck'], ['bacon', 'speck'],
+    ['sprinkle', 'aroma'], ['toast', 'toastscheibe']],
+  nichts: [['toast', 'toastscheibe'], ['sauce', 'mayo', 0xfff8dc], ['leaf', 'salat'], ['tomato', 'tomatenscheibe'], ['cheese', 'kaese'],
+    ['bacon', 'speck'], ['sprinkle', 'aroma'], ['toast', 'toastscheibe'], ['dome', 'aroma']],
   weltraum: [['toast', 'toastscheibe'], ['cheese', 'kaese'], ['bacon', 'speck'], ['leaf', 'trockensalat'], ['sauce', 'senf', 0xf2c230],
     ['toast', 'toastscheibe'], ['foil', 'alufolie'], ['box', 'raumpaket']],
   weltrekord: [['toast', 'toastscheibe'], ['spread', 'butter', 0xffe27a], ['cheese', 'kaese'], ['leaf', 'salat'], ['bacon', 'speck'], ['tomato', 'tomatenscheibe'],
@@ -508,7 +570,7 @@ function makeSandwich(spec) {
   let y = 0;
   const extras = [];
   for (const [type, item, color] of spec) {
-    if (type === 'pick' || type === 'box' || type === 'foil') { extras.push([type, item]); continue; }
+    if (type === 'pick' || type === 'box' || type === 'foil' || type === 'dome') { extras.push([type, item]); continue; }
     const g = new THREE.Group();
     const mats = [];
     const L = {
@@ -531,6 +593,12 @@ function makeSandwich(spec) {
     if (type === 'pick') {
       g.add(part('cyl', layerMaterial(0xe8d4a8, mats), 0.035, y + 0.25, 0.035, 0.1, (y + 0.25) / 2, 0.1, false));
       g.add(part('cone', layerMaterial(0xd64545, mats), 0.14, 0.16, 0.14, 0.1, y + 0.3, 0.1, false));
+    } else if (type === 'dome') {
+      const m = layerMaterial(0x9be7f5, mats);
+      m.roughness = 0.05;
+      m.userData.boxed = true;
+      g.add(part('sphere', m, 1.5, (y + 0.3) * 2, 1.5, 0, 0, 0, false));
+      g.add(part('cyl', layerMaterial(0x9aa7b8, mats), 1.55, 0.06, 1.55, 0, 0.03, 0, false));
     } else if (type === 'foil') {
       const m = layerMaterial(0xe8edf3, mats);
       m.metalness = 0.9;

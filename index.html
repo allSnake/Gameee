@@ -119,7 +119,10 @@
   .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,.06); font-size: 13px; }
   .logo { font-size: 34px; font-weight: 800; letter-spacing: .04em; color: var(--accent); margin: 0; }
   .sub { color: var(--muted); margin-top: 2px; }
-  .chapters { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 20px; }
+  h3.era { margin: 22px 0 2px; color: var(--accent); font-size: 14px; }
+  .era-banner { margin: 6px 0 12px !important; padding: 10px 12px; border-radius: 10px; background: rgba(63,169,255,.12); border: 1px solid rgba(63,169,255,.35); }
+  .era-banner b { color: #8ecae6; }
+  .chapters { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 10px; }
   .chapter { all: unset; box-sizing: border-box; cursor: pointer; border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: rgba(255,255,255,.03); display: flex; flex-direction: column; gap: 6px; min-height: 140px; }
   .chapter:hover { border-color: rgba(255,183,3,.5); background: rgba(255,183,3,.06); }
   .chapter.locked { cursor: not-allowed; opacity: .45; }
@@ -187,7 +190,7 @@
 <div id="tutorial" class="panel"></div>
 <div id="hint" class="panel">
   <b>Linksklick</b> bauen (ziehen für Bänder) · <b>R</b> drehen · <b>Shift+Klick</b> abreißen · <b>Q</b> Gebäude kopieren ·
-  <b>F</b> Sortierer-Filter · <b>Strg+Z</b> rückgängig · <b>U</b> Werkstatt · <b>P</b> Produktion · <b>Rechte Maustaste</b> Kamera · <b>WASD</b> verschieben · <b>Mausrad</b> Zoom · <b>Leertaste</b> Pause
+  <b>F</b> Sortierer-Filter · <b>Strg+Z</b> rückgängig · <b>E</b> aufrüsten · <b>U</b> Werkstatt · <b>P</b> Produktion · <b>Rechte Maustaste</b> Kamera · <b>WASD</b> verschieben · <b>Mausrad</b> Zoom · <b>Leertaste</b> Pause
 </div>
 <div id="toast" class="panel"></div>
 <div id="overlay"><div class="card" id="card"></div></div>
