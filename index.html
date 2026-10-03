@@ -7,99 +7,175 @@
 <style>
   :root {
     --bg: #1b2430;
-    --panel: rgba(20, 28, 40, 0.88);
+    --panel: rgba(20, 28, 40, 0.9);
+    --panel-solid: #172030;
+    --line: rgba(255,255,255,.09);
     --text: #eef2f7;
     --muted: #9fb0c3;
     --accent: #ffb703;
     --accent-2: #8ecae6;
+    --good: #7bdc8e;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
   canvas { display: block; }
-  .panel { position: fixed; background: var(--panel); border: 1px solid rgba(255,255,255,.08);
+  button { font: inherit; color: inherit; }
+  .panel { position: fixed; background: var(--panel); border: 1px solid var(--line);
     border-radius: 12px; padding: 12px 14px; backdrop-filter: blur(6px); }
-
-  #toolbar { left: 12px; top: 12px; bottom: 12px; width: 206px; display: flex; flex-direction: column; gap: 6px; }
-  #toolbar h1 { margin: 0 0 2px; font-size: 15px; letter-spacing: .04em; color: var(--accent); }
-  #tools { overflow-y: auto; flex: 1; margin: 0 -6px; padding: 0 6px; }
-  .group { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 10px 0 3px 4px; }
-  .tool { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; align-items: center; gap: 8px;
-    padding: 6px 10px; border-radius: 8px; font-size: 14px; border: 1px solid transparent; }
-  .tool:hover { background: rgba(255,255,255,.07); }
-  .tool.active { border-color: var(--accent); background: rgba(255,183,3,.12); }
-  .tool kbd { margin-left: auto; font-size: 11px; color: var(--muted); border: 1px solid rgba(255,255,255,.15);
-    border-radius: 4px; padding: 0 5px; }
-  .dot { width: 12px; height: 12px; border-radius: 3px; flex: none; }
-  .row { display: flex; gap: 6px; }
-  .btn { all: unset; box-sizing: border-box; flex: 1; cursor: pointer; text-align: center; padding: 7px 8px; border-radius: 8px;
+  .dot { width: 12px; height: 12px; border-radius: 3px; flex: none; display: inline-block; vertical-align: -1px; }
+  kbd { font-size: 11px; color: var(--muted); border: 1px solid rgba(255,255,255,.18); border-radius: 4px; padding: 0 5px; font-family: inherit; }
+  .btn { all: unset; box-sizing: border-box; cursor: pointer; text-align: center; padding: 7px 10px; border-radius: 8px;
     font-size: 13px; background: rgba(142,202,230,.15); color: var(--accent-2); }
   .btn:hover { background: rgba(142,202,230,.28); }
   .btn.active { background: rgba(255,183,3,.2); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #1b2430; font-weight: 700; padding: 10px 18px; font-size: 15px; }
+  .btn.primary:hover { filter: brightness(1.08); }
 
-  #chapters { left: 50%; transform: translateX(-50%); top: 12px; display: flex; gap: 6px; padding: 6px; }
-  .chap { all: unset; cursor: pointer; padding: 7px 14px; border-radius: 8px; font-size: 14px; }
-  .chap:hover { background: rgba(255,255,255,.07); }
-  .chap.active { background: rgba(255,183,3,.18); color: var(--accent); }
+  /* Werkzeugleiste */
+  #toolbar { left: 12px; top: 12px; bottom: 12px; width: 214px; display: flex; flex-direction: column; gap: 8px; }
+  #toolbar h1 { margin: 0; font-size: 15px; letter-spacing: .05em; color: var(--accent); }
+  #toolbar h1 small { display: block; font-size: 11px; color: var(--muted); letter-spacing: .02em; font-weight: 500; }
+  #tabs { display: flex; gap: 4px; }
+  #tabs button { all: unset; flex: 1; text-align: center; cursor: pointer; font-size: 12px; padding: 6px 0; border-radius: 7px; color: var(--muted); }
+  #tabs button:hover { background: rgba(255,255,255,.06); }
+  #tabs button.active { background: rgba(255,183,3,.16); color: var(--accent); }
+  #tools { overflow-y: auto; flex: 1; margin: 0 -6px; padding: 0 6px; }
+  .tool { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    padding: 6px 9px; border-radius: 8px; font-size: 14px; border: 1px solid transparent; }
+  .tool:hover { background: rgba(255,255,255,.07); }
+  .tool.active { border-color: var(--accent); background: rgba(255,183,3,.12); }
+  .tool .new { font-size: 10px; font-weight: 700; color: #1b2430; background: var(--good); border-radius: 4px; padding: 0 4px; }
+  .tool kbd { margin-left: auto; }
+  .tool.erase { margin-top: 6px; }
+  .row { display: flex; gap: 6px; }
+  .row .btn { flex: 1; }
 
-  #goal { right: 12px; top: 12px; width: 240px; }
+  /* Kopfzeile */
+  #topbar { left: 50%; transform: translateX(-50%); top: 12px; display: flex; gap: 10px; align-items: center; padding: 6px 8px 6px 14px; }
+  #topbar .title { font-weight: 700; font-size: 14px; }
+  #topbar .time { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; min-width: 44px; }
+  #topbar .btn { padding: 5px 9px; }
+
+  /* Ziel */
+  #right { position: fixed; right: 12px; top: 12px; width: 250px; display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 24px); }
+  #right .panel { position: static; }
+  #goal { overflow-y: auto; min-height: 0; flex: 0 1 auto; }
+  #showcase { height: 210px; flex: none; background: transparent; backdrop-filter: none; cursor: zoom-in; padding: 8px 10px; transition: height .2s; }
+  #showcase span { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  #right.big { width: min(520px, 46vw); }
+  #right.big #showcase { height: min(520px, 60vh); cursor: zoom-out; }
   #goal h2 { margin: 0 0 8px; font-size: 14px; color: var(--accent); }
-  #goal ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-  #goal li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-  #goal li .pn { flex: 1; }
-  #goal li .pc { color: var(--muted); font-variant-numeric: tabular-nums; }
-  #goal li.ok .pc, #goal li.ok .pn { color: #7bdc8e; }
+  #parts { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  #parts li { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 3px 4px; border-radius: 6px; cursor: pointer; }
+  #parts li:hover { background: rgba(255,255,255,.06); }
+  #parts li .pn { flex: 1; }
+  #parts li .pc { color: var(--muted); font-variant-numeric: tabular-nums; }
+  #parts li.ok .pc, #parts li.ok .pn { color: var(--good); }
   #bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); margin-top: 10px; overflow: hidden; }
   #bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s; }
-  .meta { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted); }
-  #time { font-variant-numeric: tabular-nums; }
+  .meta { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+  .stars { color: var(--accent); letter-spacing: 1px; }
+  .stars .off { color: rgba(255,255,255,.18); }
 
-  #info { left: 230px; bottom: 12px; font-size: 13px; line-height: 1.5; min-width: 220px; max-width: 300px; }
+  #info { left: 238px; bottom: 12px; font-size: 13px; line-height: 1.5; width: 290px; }
   #info:empty { display: none; }
   #info b { color: var(--accent); }
-  #hint { right: 12px; bottom: 12px; font-size: 12px; color: var(--muted); line-height: 1.6; max-width: 300px; }
+  #info .st { color: var(--muted); }
+  #info .st.bad { color: #ff8a7a; }
+  #info .st.good { color: var(--good); }
+  #tutorial { left: 50%; transform: translateX(-50%); top: 66px; max-width: min(560px, 46vw); font-size: 14px; line-height: 1.5; border-color: rgba(255,183,3,.35); }
+  #tutorial:empty { display: none; }
+  #tutorial .step { color: var(--accent); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  #tutorial b { color: var(--accent); }
+  #hint { right: 12px; bottom: 12px; font-size: 12px; color: var(--muted); line-height: 1.6; max-width: 250px; }
   #hint b { color: var(--text); }
-  #speedbox { left: 50%; transform: translateX(-50%); bottom: 12px; display: flex; gap: 6px; align-items: center; padding: 8px; }
-  #speedbox span { font-size: 12px; color: var(--muted); margin: 0 4px; }
-  #speedbox .btn { flex: none; padding: 5px 10px; }
-  #toast { left: 50%; top: 14%; transform: translate(-50%, 0); font-size: 20px; font-weight: 700;
-    color: var(--accent); text-align: center; opacity: 0; pointer-events: none; transition: opacity .4s; }
+  #toast { left: 50%; top: 22%; transform: translateX(-50%); font-size: 18px; font-weight: 700;
+    color: var(--accent); text-align: center; opacity: 0; pointer-events: none; transition: opacity .35s; }
   #toast.show { opacity: 1; }
-  @media (max-width: 760px) {
-    #toolbar { width: 160px; }
+
+  /* Overlays */
+  #overlay { position: fixed; inset: 0; background: rgba(10, 14, 22, .72); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 10; }
+  #overlay.show { display: flex; }
+  .card { background: var(--panel-solid); border: 1px solid var(--line); border-radius: 16px; padding: 24px 26px; max-width: 860px; width: 100%;
+    max-height: calc(100vh - 40px); overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+  .card h2 { margin: 0 0 6px; font-size: 26px; }
+  .card h3 { margin: 18px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .card p { margin: 0; line-height: 1.55; color: #d6dee8; }
+  .card .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; flex-wrap: wrap; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,.06); font-size: 13px; }
+  .logo { font-size: 34px; font-weight: 800; letter-spacing: .04em; color: var(--accent); margin: 0; }
+  .sub { color: var(--muted); margin-top: 2px; }
+  .chapters { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 20px; }
+  .chapter { all: unset; box-sizing: border-box; cursor: pointer; border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: rgba(255,255,255,.03); display: flex; flex-direction: column; gap: 6px; min-height: 140px; }
+  .chapter:hover { border-color: rgba(255,183,3,.5); background: rgba(255,183,3,.06); }
+  .chapter.locked { cursor: not-allowed; opacity: .45; }
+  .chapter.locked:hover { border-color: var(--line); background: rgba(255,255,255,.03); }
+  .chapter .num { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .chapter .name { font-size: 17px; font-weight: 700; }
+  .chapter .desc { font-size: 12.5px; color: var(--muted); line-height: 1.45; flex: 1; }
+  .chapter .foot { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  .bigstars { font-size: 44px; text-align: center; margin: 10px 0 4px; }
+  .center { text-align: center; }
+  .linkish { all: unset; cursor: pointer; color: var(--muted); font-size: 12px; text-decoration: underline; }
+  .tree, .tree ul { list-style: none; margin: 0; padding-left: 18px; }
+  .tree { padding-left: 0; }
+  .tree li { margin: 3px 0; font-size: 13.5px; }
+  .tree ul { border-left: 1px dashed rgba(255,255,255,.15); margin-left: 5px; }
+  .tree .via { color: var(--muted); }
+  .tree .via b { color: var(--accent-2); font-weight: 600; }
+  .bookpart { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; }
+  .bookpart.flash { border-color: var(--accent); }
+  .recipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+  .recipes div { font-size: 13px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.04); line-height: 1.5; }
+  .recipes b { color: var(--accent-2); }
+
+  @media (max-height: 820px) { #hint { display: none; } }
+  @media (max-width: 860px) {
+    #toolbar { width: 170px; }
     #info, #hint { display: none; }
-    #goal { width: 190px; }
+    #right { width: 200px; }
+    #showcase { height: 160px; }
     .tool kbd { display: none; }
-    #chapters { top: auto; bottom: 12px; }
+    #topbar { top: auto; bottom: 12px; }
+    #tutorial { top: 12px; max-width: 46vw; }
   }
 </style>
 </head>
 <body>
 <div id="toolbar" class="panel">
-  <h1>ABSURD INDUSTRIES</h1>
+  <h1>ABSURD INDUSTRIES<small>Das Sandwich-Imperium</small></h1>
+  <div id="tabs"></div>
   <div id="tools"></div>
-  <div class="row"><button class="btn" id="demo">Demo-Fabrik</button><button class="btn" id="clear">Abreißen</button></div>
-  <div class="row"><button class="btn" id="mute">Ton an</button></div>
+  <div class="row"><button class="btn" id="btn-book">Rezeptbuch <kbd>B</kbd></button></div>
+  <div class="row"><button class="btn" id="btn-menu">Menü</button><button class="btn" id="btn-mute">Ton an</button></div>
 </div>
-<div id="chapters" class="panel"></div>
-<div id="goal" class="panel">
-  <h2 id="goal-title"></h2>
-  <ul id="parts"></ul>
-  <div id="bar"><i></i></div>
-  <div class="meta"><span>Zeit <b id="time">0:00</b></span><span id="surplus"></span></div>
-</div>
-<div id="speedbox" class="panel">
-  <span>Tempo</span>
+<div id="topbar" class="panel">
+  <span class="title" id="chapter-title"></span>
+  <span class="time" id="time">0:00</span>
+  <button class="btn speed" data-speed="0" title="Pause (Leertaste)">❚❚</button>
   <button class="btn speed active" data-speed="1">1×</button>
   <button class="btn speed" data-speed="2">2×</button>
   <button class="btn speed" data-speed="4">4×</button>
 </div>
+<div id="right">
+  <div id="goal" class="panel">
+    <h2 id="goal-title"></h2>
+    <ul id="parts"></ul>
+    <div id="bar"><i></i></div>
+    <div class="meta"><span id="star-target"></span><span id="surplus"></span></div>
+  </div>
+  <div id="showcase" class="panel" title="Klicken zum Vergrößern"><span>Schaufenster</span></div>
+</div>
 <div id="info" class="panel"></div>
+<div id="tutorial" class="panel"></div>
 <div id="hint" class="panel">
-  <b>Linksklick</b> bauen (Bänder: ziehen) · <b>R</b> drehen · <b>Shift+Klick</b> abreißen<br>
-  <b>Rechte Maustaste</b> Kamera · <b>WASD</b> verschieben · <b>Mausrad</b> Zoom
+  <b>Linksklick</b> bauen (ziehen für Bänder) · <b>R</b> drehen · <b>Shift+Klick</b> abreißen · <b>Q</b> Gebäude kopieren ·
+  <b>F</b> Sortierer-Filter · <b>Rechte Maustaste</b> Kamera · <b>WASD</b> verschieben · <b>Mausrad</b> Zoom · <b>Leertaste</b> Pause
 </div>
 <div id="toast" class="panel"></div>
+<div id="overlay"><div class="card" id="card"></div></div>
 <script type="importmap">
 { "imports": { "three": "./vendor/three/three.module.js" } }
 </script>

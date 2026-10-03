@@ -1,0 +1,10 @@
+{
+  "name": "absurd-industries",
+  "private": true,
+  "type": "module",
+  "description": "3D-Automatisierungsspiel: vollautomatische Fabriken für völlig unnötige Sandwiches.",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node tests/run.mjs"
+  }
+}
