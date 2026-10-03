@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Absurd Industries</title>
+<style>
+  :root {
+    --bg: #1b2430;
+    --panel: rgba(20, 28, 40, 0.88);
+    --text: #eef2f7;
+    --muted: #9fb0c3;
+    --accent: #ffb703;
+    --accent-2: #8ecae6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  canvas { display: block; }
+  .panel { position: fixed; background: var(--panel); border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px; padding: 12px 14px; backdrop-filter: blur(6px); }
+  #toolbar { left: 12px; top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  #toolbar h1 { margin: 0 0 4px; font-size: 15px; letter-spacing: .04em; color: var(--accent); }
+  .tool { all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: 8px; font-size: 14px; border: 1px solid transparent; }
+  .tool:hover { background: rgba(255,255,255,.07); }
+  .tool.active { border-color: var(--accent); background: rgba(255,183,3,.12); }
+  .tool kbd { margin-left: auto; font-size: 11px; color: var(--muted); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 4px; padding: 0 5px; }
+  .tool .dot { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  .sep { height: 1px; background: rgba(255,255,255,.1); margin: 4px 0; }
+  .btn { all: unset; cursor: pointer; text-align: center; padding: 7px 10px; border-radius: 8px;
+    font-size: 13px; background: rgba(142,202,230,.15); color: var(--accent-2); }
+  .btn:hover { background: rgba(142,202,230,.28); }
+  #goal { right: 12px; top: 12px; width: 230px; }
+  #goal h2 { margin: 0 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  #goal .big { font-size: 28px; font-weight: 700; }
+  #bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); margin-top: 8px; overflow: hidden; }
+  #bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s; }
+  #goal p { margin: 10px 0 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
+  #hint { left: 50%; transform: translateX(-50%); bottom: 12px; font-size: 13px; color: var(--muted); text-align: center; max-width: 92vw; }
+  #hint b { color: var(--text); }
+  #toast { left: 50%; top: 18%; transform: translate(-50%, 0); font-size: 22px; font-weight: 700;
+    color: var(--accent); text-align: center; opacity: 0; pointer-events: none; transition: opacity .4s; }
+  #toast.show { opacity: 1; }
+  @media (max-width: 640px) {
+    #goal { width: 160px; }
+    #goal .big { font-size: 22px; }
+    .tool kbd { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="toolbar" class="panel">
+  <h1>ABSURD INDUSTRIES</h1>
+  <div id="tools"></div>
+  <div class="sep"></div>
+  <button class="btn" id="demo">Demo-Fabrik laden</button>
+  <button class="btn" id="clear">Alles abreißen</button>
+</div>
+<div id="goal" class="panel">
+  <h2>Kapitel 1 · Sandwich</h2>
+  <div class="big"><span id="count">0</span> / <span id="target">8</span></div>
+  <div>Teil 1: Brot</div>
+  <div id="bar"><i></i></div>
+  <p>Liefere 8 Brot an die Endmontage. Jedes Brot wird zu einer Schicht im Sandwich.</p>
+</div>
+<div id="hint" class="panel">
+  <b>Linksklick</b> bauen (Förderband: ziehen) · <b>R</b> drehen · <b>Shift+Klick</b> abreißen ·
+  <b>Rechte Maustaste</b> Kamera drehen · <b>Mausrad</b> Zoom
+</div>
+<div id="toast" class="panel"></div>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.js" } }
+</script>
+<script type="module" src="./game.js"></script>
+</body>
+</html>
