@@ -13,7 +13,7 @@ export const isMachine = (kind) => BUILDINGS[kind]?.cat === 'maschine';
 let nextItemId = 1;
 
 export class Factory {
-  // content: Ergebnis von chapterContent(), hooks: spawn(item, cell), drop(item), deliver(type), trash(type)
+  // content: Ergebnis von chapterContent(), hooks: spawn(item, cell), drop(item), deliver(type), trash(type), store(type)
   constructor(size, content, hooks = {}) {
     this.N = size;
     this.content = content;
@@ -101,6 +101,7 @@ export class Factory {
       case 'splitter': return this.carrierFree(dest, from);
       case 'sink': return this.parts.has(type);
       case 'muelleimer': return true;
+      case 'lager': return type === 'eisen';
       default: return isMachine(dest.kind) && this.machineWants(dest, type);
     }
   }
@@ -117,6 +118,7 @@ export class Factory {
     this.drop(item);
     if (dest.kind === 'sink') { if (this.hooks.deliver) this.hooks.deliver(item.type); return; }
     if (dest.kind === 'muelleimer') { if (this.hooks.trash) this.hooks.trash(item.type); return; }
+    if (dest.kind === 'lager') { if (this.hooks.store) this.hooks.store(item.type); return; }
     dest.inv[item.type] = (dest.inv[item.type] || 0) + 1;
   }
 

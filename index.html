@@ -41,12 +41,17 @@
   #tabs button:hover { background: rgba(255,255,255,.06); }
   #tabs button.active { background: rgba(255,183,3,.16); color: var(--accent); }
   #tools { overflow-y: auto; flex: 1; margin: 0 -6px; padding: 0 6px; }
-  .tool { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  .tool { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap;
     padding: 6px 9px; border-radius: 8px; font-size: 14px; border: 1px solid transparent; }
   .tool:hover { background: rgba(255,255,255,.07); }
   .tool.active { border-color: var(--accent); background: rgba(255,183,3,.12); }
   .tool .new { font-size: 10px; font-weight: 700; color: #1b2430; background: var(--good); border-radius: 4px; padding: 0 4px; }
-  .tool kbd { margin-left: auto; }
+  .tool .cost { margin-left: auto; white-space: nowrap; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .tool .cost::before { content: '⛓ '; }
+  .tool.poor { opacity: .45; }
+  .tool kbd { margin-left: 6px; }
+  #topbar .stock { font-size: 13px; color: var(--muted); }
+  #topbar .stock b { color: #cfd8e3; font-variant-numeric: tabular-nums; }
   .tool.erase { margin-top: 6px; }
   .row { display: flex; gap: 6px; }
   .row .btn { flex: 1; }
@@ -154,6 +159,7 @@
 <div id="topbar" class="panel">
   <span class="title" id="chapter-title"></span>
   <span class="time" id="time">0:00</span>
+  <span class="stock" title="Baukonto: Eisen aus dem Materiallager">⛓ <b id="stock">0</b> Eisen</span>
   <button class="btn speed" data-speed="0" title="Pause (Leertaste)">❚❚</button>
   <button class="btn speed active" data-speed="1">1×</button>
   <button class="btn speed" data-speed="2">2×</button>

@@ -46,11 +46,23 @@ function kit(g, ghost) {
   return add;
 }
 
+// Flacher Pfeil, der exakt in Ausgaberichtung (+x) zeigt
+const arrowShape = new THREE.Shape();
+arrowShape.moveTo(0.16, 0);
+arrowShape.lineTo(-0.02, 0.13);
+arrowShape.lineTo(-0.02, 0.05);
+arrowShape.lineTo(-0.14, 0.05);
+arrowShape.lineTo(-0.14, -0.05);
+arrowShape.lineTo(-0.02, -0.05);
+arrowShape.lineTo(-0.02, -0.13);
+arrowShape.closePath();
+const arrowGeo = new THREE.ExtrudeGeometry(arrowShape, { depth: 0.03, bevelEnabled: false });
+arrowGeo.rotateX(-Math.PI / 2);
+
 function arrow(add, x = 0.38, y = 0.2, color = 0xffffff, rotY = 0) {
   const holder = new THREE.Group();
-  const a = part('cone', mat(color, { emissive: color, emissiveIntensity: 0.25 }), 0.26, 0.3, 0.26, x, y, 0, false);
-  a.rotation.z = -Math.PI / 2;
-  a.rotation.y = Math.PI / 4;
+  const a = new THREE.Mesh(arrowGeo, mat(color, { emissive: color, emissiveIntensity: 0.3 }));
+  a.position.set(x - 0.06, y, 0);
   holder.add(a);
   holder.rotation.y = rotY;
   return holder;
@@ -90,6 +102,12 @@ function logisticsDecor(kind, g, add) {
       add('cyl', 0x5b5f68, 0.7, 0.6, 0.7, 0, 0.3, 0);
       add('cyl', 0x3b3f48, 0.76, 0.06, 0.76, 0, 0.63, 0);
       add('cyl', 0xd64545, 0.72, 0.08, 0.72, 0, 0.45, 0, {}, false);
+      break;
+    case 'lager':
+      add('box', 0x6f7a8a, 0.94, 0.14, 0.94, 0, 0.07, 0);
+      add('box', 0x9aa7b8, 0.8, 0.5, 0.7, -0.04, 0.39, 0);
+      add('cone', 0x55606e, 0.95, 0.25, 0.85, -0.04, 0.76, 0);
+      for (let i = 0; i < 3; i++) add('box', 0xaab4c2, 0.36, 0.08, 0.18, 0.3, 0.18 + i * 0.09, 0, { metalness: 0.6 }, false);
       break;
     case 'sink':
       add('box', 0xf1c453, 0.96, 0.16, 0.96, 0, 0.08, 0);
@@ -222,6 +240,17 @@ function sourceDecor(kind, g, add) {
       add('box', 0xcdb878, 0.94, 0.24, 0.94, 0, 0.12, 0);
       add('cone', 0xe6d29a, 0.7, 0.5, 0.7, -0.05, 0.44, 0);
       break;
+    case 'kohlemine':
+    case 'erzmine': {
+      const rock = kind === 'kohlemine' ? 0x2b2b2e : 0x8a5a44;
+      add('box', 0x5a5f6a, 0.94, 0.2, 0.94, 0, 0.1, 0);
+      add('cone', 0x6f7480, 0.8, 0.55, 0.8, -0.12, 0.47, 0);
+      add('box', 0x15161a, 0.12, 0.28, 0.34, 0.2, 0.34, 0);
+      add('box', 0x8b5a2b, 0.06, 0.34, 0.06, 0.24, 0.37, 0.2, {}, false);
+      add('box', 0x8b5a2b, 0.06, 0.34, 0.06, 0.24, 0.37, -0.2, {}, false);
+      for (const [x, z] of [[0.3, 0.32], [0.2, -0.34], [-0.3, 0.3]]) add('box', rock, 0.16, 0.12, 0.16, x, 0.26, z, {}, false);
+      break;
+    }
     case 'gummibaum':
       soil();
       add('cyl', 0x3a3128, 0.14, 0.7, 0.14, -0.05, 0.6, 0);
@@ -374,6 +403,13 @@ function machineDecor(kind, g, add) {
       add('cyl', 0x6f7580, 0.34, 0.6, 0.34, -0.1, 0.6, 0.25);
       add('sphere', 0x331100, 0.12, 0.2, 0.12, -0.22, 1.55, -0.2, add.glow(0xff7b00), false);
       break;
+    case 'schmelze':
+      add('box', 0x5a3a2a, 0.92, 0.2, 0.92, 0, 0.1, 0);
+      add('cyl', 0xc4552b, 0.7, 0.7, 0.7, -0.05, 0.55, 0);
+      add('cyl', 0x5a2010, 0.4, 0.06, 0.4, -0.05, 0.92, 0, add.glow(0xff6a00), false);
+      add('cyl', 0x555a62, 0.16, 0.6, 0.16, -0.3, 1.1, -0.28);
+      named(add('box', 0xffa040, 0.24, 0.08, 0.16, 0.3, 0.3, 0, add.glow(0xff8a00), false), 'bob');
+      break;
     case 'formpresse':
       base(0xd9741c, 0.4);
       add('box', 0xffa94d, 0.5, 0.06, 0.5, 0, 0.42, 0, {}, false);
@@ -389,8 +425,8 @@ export function makeBuilding(kind, ghost = false) {
   const add = kit(g, ghost);
   const cat = BUILDINGS[kind].cat;
   if (cat === 'logistik') logisticsDecor(kind, g, add);
-  else if (cat === 'quelle') { sourceDecor(kind, g, add); g.add(arrow(add)); }
-  else { machineDecor(kind, g, add); g.add(arrow(add, 0.42)); }
+  else if (cat === 'quelle') { sourceDecor(kind, g, add); g.add(arrow(add, 0.46, 0.18)); }
+  else { machineDecor(kind, g, add); g.add(arrow(add, 0.48, 0.18)); }
   return g;
 }
 

@@ -97,6 +97,14 @@ function run(f, ticks) { for (let i = 0; i < ticks; i++) f.tick(); }
   run(f, 400);
   ok(trash.wasser > 20 && trash.weizen > 20, `Reißverschluss: Wasser ${trash.wasser}, Weizen ${trash.weizen}`);
 }
+{ // Eisen: Erz + Kohle -> Schmelzofen -> Materiallager
+  const f = new Factory(10, content);
+  let eisen = 0;
+  f.hooks.store = () => eisen++;
+  f.place('erzmine', 1, 4, 0); f.place('kohlemine', 2, 3, 1); f.place('schmelze', 2, 4, 0); f.place('belt', 3, 4, 0); f.place('lager', 4, 4, 0);
+  run(f, 200);
+  ok(eisen > 5, `Materiallager: nur ${eisen} Eisen`);
+}
 { // Stau: Endmontage nimmt keine Nicht-Teile an
   const f = new Factory(8, chapterContent('butterbrot'));
   f.place('weizenfeld', 0, 0, 0); f.place('belt', 1, 0, 0); f.place('sink', 2, 0, 0);

@@ -43,6 +43,9 @@ URL-Parameter zum Ausprobieren:
 
 ## Mechaniken
 
+- **Baukosten:** Jedes Gebäude kostet Eisen (Band 1, Quelle 6, Maschine 12 …), Abreißen erstattet alles. Jedes Kapitel startet mit einem Baukonto;
+  ab Kapitel 2 füllst du es selbst auf: Erzmine + Kohlemine → Schmelzofen → Materiallager.
+- **Kohle als Brennstoff:** Ab Kapitel 2 braucht der Ofen fürs Toastbrot Kohle, der Grill ebenso (in der Ente auch der Glasofen).
 - **Quellen** erzeugen Rohstoffe, **Maschinen** verarbeiten sie nach Rezept. Maschinen nehmen Zutaten von allen Seiten an und geben nach vorn ab (weißer Pfeil).
 - Rezepte können mehrere Zutaten brauchen (Knetmaschine: Mehl + Wasser + Hefe) und mehrere Stück liefern (Schneider: 1 Toastbrot → 4 Scheiben).
 - **Verteiler** teilen Ströme auf, **Sortierer** trennen eine Sorte ab, **Brücken** springen bis zu 4 Felder über andere Bänder, **Mülleimer** schlucken Überlauf.

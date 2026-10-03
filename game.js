@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from './vendor/three/OrbitControls.js';
-import { ITEMS, BUILDINGS, CHAPTERS, CAMPAIGN, TICK, chapterContent } from './data.js';
+import { ITEMS, BUILDINGS, CHAPTERS, CAMPAIGN, TICK, chapterContent, costOf } from './data.js';
 import { Factory, DIRS, isCarrier, isMachine, isSource } from './sim.js';
 import { planChapter } from './layout.js';
 import { mat, part, makeItem, makeBuilding, makeEndProject } from './models.js';
@@ -117,7 +117,7 @@ let overlayOpen = false;
 let meta = loadMeta();
 
 function newProgress() {
-  return { delivered: {}, surplus: 0, trashed: 0, elapsed: 0, started: false, finished: false, demo: false, tut: 0 };
+  return { delivered: {}, surplus: 0, trashed: 0, elapsed: 0, started: false, finished: false, demo: false, tut: 0, eisen: content.chapter.budget };
 }
 
 const hooks = {
@@ -129,6 +129,7 @@ const hooks = {
   drop(item) { if (item.mesh) itemLayer.remove(item.mesh); },
   deliver(type) { deliver(type); },
   trash() { progress.trashed++; },
+  store() { progress.eisen++; renderStock(); },
 };
 
 // ================================================================ Gebäude
@@ -157,10 +158,14 @@ function placeBuilding(kind, x, z, dir, { silent = false } = {}) {
     if (old.dir !== dir) { old.dir = dir; old.mesh.rotation.y = -dir * Math.PI / 2; scheduleSave(); }
     return old;
   }
+  const price = costOf(kind) - (old ? costOf(old.kind) : 0);
+  if (!silent && price > progress.eisen) { noIron(costOf(kind)); return null; }
   detachMesh(old);
   const cell = factory.place(kind, x, z, dir);
   attachMesh(cell);
   if (!silent) {
+    progress.eisen -= price;
+    renderStock();
     sfx.place();
     if (!progress.started) progress.started = true;
     scheduleSave();
@@ -173,7 +178,7 @@ function removeBuilding(x, z, { silent = false } = {}) {
   const cell = factory.remove(x, z);
   if (!cell) return;
   detachMesh(cell);
-  if (!silent) { sfx.remove(); scheduleSave(); }
+  if (!silent) { progress.eisen += costOf(cell.kind); renderStock(); sfx.remove(); scheduleSave(); }
 }
 
 function rotateCell(cell) {
@@ -492,7 +497,23 @@ function recipeLine(r) {
   return `${ins} → <b>${r.n > 1 ? r.n + '× ' : ''}${itemName(r.out)}</b> <span class="st">(${secs(r.t)})</span>`;
 }
 
+let noIronAt = 0;
+function noIron(cost) {
+  if (performance.now() - noIronAt < 1500) return;
+  noIronAt = performance.now();
+  toast(`Zu wenig Eisen – braucht ${cost}, du hast ${progress.eisen}`, 1600);
+}
+
+function renderStock() {
+  $('stock').textContent = progress.eisen;
+  document.querySelectorAll('.tool[data-kind]').forEach(b => b.classList.toggle('poor', costOf(b.dataset.kind) > progress.eisen));
+}
+
 function describeKind(kind) {
+  return describeKindBase(kind) + `<br><span class="st">Kosten: ${costOf(kind)} Eisen</span>`;
+}
+
+function describeKindBase(kind) {
   const b = BUILDINGS[kind];
   if (b.cat === 'quelle') return `<b>${b.name}</b><br>Erzeugt ${itemName(b.out)} alle ${secs(b.ticks)}.`;
   if (b.cat === 'maschine') return `<b>${b.name}</b><br>${(content.byMachine[kind] || []).map(recipeLine).join('<br>')}`;
@@ -536,9 +557,10 @@ function renderToolbar() {
   el.innerHTML = '';
   tabTools().forEach((kind, i) => {
     const b = document.createElement('button');
-    b.className = 'tool' + (kind === tool ? ' active' : '');
+    b.className = 'tool' + (kind === tool ? ' active' : '') + (costOf(kind) > progress.eisen ? ' poor' : '');
+    b.dataset.kind = kind;
     b.innerHTML = `<span class="dot" style="background:${BUILDINGS[kind].color}"></span>${bName(kind)}` +
-      (content.isNew.has(kind) ? ' <span class="new">NEU</span>' : '') + (i < 9 ? `<kbd>${i + 1}</kbd>` : '');
+      (content.isNew.has(kind) ? ' <span class="new">NEU</span>' : '') + `<span class="cost">${costOf(kind)}</span>` + (i < 9 ? `<kbd>${i + 1}</kbd>` : '');
     b.addEventListener('click', () => setTool(kind));
     b.addEventListener('mouseenter', () => { infoOverride = kind; renderInfo(); });
     b.addEventListener('mouseleave', () => { infoOverride = null; renderInfo(); });
@@ -794,6 +816,7 @@ function loadChapter(id, { fresh = false } = {}) {
   renderGoal();
   renderTutorial();
   renderInfo();
+  renderStock();
   if (!saved || !(saved.b || []).length) showIntro();
   else toast(`${content.chapter.title} – weiter geht's`);
 }
@@ -809,6 +832,7 @@ function runDemo() {
   progress.tut = TUTORIAL.length;
   for (const [kind, x, z, dir] of plan) placeBuilding(kind, x, z, dir, { silent: true });
   buildShowcase();
+  renderStock();
   renderGoal();
   renderTutorial();
   scheduleSave();

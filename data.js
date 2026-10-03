@@ -46,6 +46,9 @@ export const ITEMS = {
   gewuerz:        { name: 'Gewürz',          shape: 'box',    color: 0xd9822b, s: [0.7, 0.7, 0.7] },
   papier:         { name: 'Papier',          shape: 'box',    color: 0xfafafa, s: [1.3, 0.12, 1.3] },
   sandwichbox:    { name: 'Sandwichbox',     shape: 'box',    color: 0xf2e6c9, s: [1.3, 1, 1.3] },
+  kohle:          { name: 'Kohle',           shape: 'box',    color: 0x2b2b2e, s: [0.8, 0.7, 0.8] },
+  erz:            { name: 'Eisenerz',        shape: 'box',    color: 0x8a5a44, s: [0.9, 0.8, 0.9] },
+  eisen:          { name: 'Eisen',           shape: 'box',    color: 0xaab4c2, s: [1.3, 0.4, 0.7] },
   // Bonus: Quietscheente
   rohoel:         { name: 'Rohöl',           shape: 'sphere', color: 0x1c1c22, s: [1, 1, 1] },
   plastik:        { name: 'Plastik',         shape: 'box',    color: 0xdfe6ee, s: [1.1, 0.8, 1.1] },
@@ -70,6 +73,7 @@ export const BUILDINGS = {
   sortierer:  { cat: 'logistik', name: 'Sortierer',  color: '#3fb6c8', info: 'Eine Item-Sorte geht zur Seite (blauer Pfeil), alles andere geradeaus. Lernt die Sorte vom ersten Item, F ändert den Filter.' },
   muelleimer: { cat: 'logistik', name: 'Mülleimer',  color: '#6b6f78', info: 'Vernichtet alles, was hineinfällt. Gegen Stau.' },
   sink:       { cat: 'logistik', name: 'Endmontage', color: '#ffb703', info: 'Nimmt alle Teile fürs Endprojekt an. Überschüssige Teile verschwinden.' },
+  lager:      { cat: 'logistik', name: 'Materiallager', color: '#9aa7b8', info: 'Nimmt Eisen an und legt es auf dein Baukonto. Damit bezahlst du neue Gebäude.' },
 
   weizenfeld:       { cat: 'quelle', name: 'Weizenfeld',      out: 'weizen',      ticks: 6, color: '#e9c46a' },
   kuhweide:         { cat: 'quelle', name: 'Kuhweide',        out: 'milch',       ticks: 5, color: '#f2f2f2' },
@@ -91,6 +95,8 @@ export const BUILDINGS = {
   pigmentmine:      { cat: 'quelle', name: 'Pigmentmine',     out: 'pigment',     ticks: 6, color: '#ff3fa4' },
   sandgrube:        { cat: 'quelle', name: 'Sandgrube',       out: 'sand',        ticks: 5, color: '#e6d29a' },
   gummibaum:        { cat: 'quelle', name: 'Gummibaum',       out: 'gummi',       ticks: 7, color: '#4a5160' },
+  kohlemine:        { cat: 'quelle', name: 'Kohlemine',       out: 'kohle',       ticks: 5, color: '#2b2b2e' },
+  erzmine:          { cat: 'quelle', name: 'Erzmine',         out: 'erz',         ticks: 6, color: '#8a5a44' },
 
   muehle:         { cat: 'maschine', name: 'Mühle',          color: '#b8b8c0' },
   ofen:           { cat: 'maschine', name: 'Ofen',           color: '#d9534f' },
@@ -114,6 +120,7 @@ export const BUILDINGS = {
   faltmaschine:   { cat: 'maschine', name: 'Faltmaschine',   color: '#d8b98a' },
   raffinerie:     { cat: 'maschine', name: 'Raffinerie',     color: '#555b66' },
   formpresse:     { cat: 'maschine', name: 'Formpresse',     color: '#f08a24' },
+  schmelze:       { cat: 'maschine', name: 'Schmelzofen',    color: '#c4552b' },
 };
 
 // Rezepte: m = Maschine, in = Zutaten, out × n = Ergebnis, t = Takte (1 Takt = 0,25 s), from = Kapitel, ab dem es gilt.
@@ -127,9 +134,10 @@ export const RECIPES = [
   { m: 'zuckerfabrik', in: { zuckerruebe: 1 },                   out: 'zucker',         n: 1, t: 4, from: 'kaesetoast' },
   { m: 'gaerfass',     in: { zucker: 1, wasser: 1 },             out: 'hefe',           n: 1, t: 6, from: 'kaesetoast' },
   { m: 'knetmaschine', in: { mehl: 1, wasser: 1, hefe: 1 },      out: 'teig',           n: 1, t: 5, from: 'kaesetoast' },
-  { m: 'ofen',         in: { teig: 1 },                          out: 'toastbrot',      n: 1, t: 8, from: 'kaesetoast' },
+  { m: 'ofen',         in: { teig: 1, kohle: 1 },                out: 'toastbrot',      n: 1, t: 8, from: 'kaesetoast' },
   { m: 'schneider',    in: { toastbrot: 1 },                     out: 'toastscheibe',   n: 4, t: 4, from: 'kaesetoast' },
   { m: 'kaeserei',     in: { milch: 2 },                         out: 'kaese',          n: 1, t: 8, from: 'kaesetoast' },
+  { m: 'schmelze',     in: { erz: 1, kohle: 1 },                 out: 'eisen',          n: 1, t: 6, from: 'kaesetoast' },
   // Kapitel 3 – BLT
   { m: 'metzgerei',    in: { schwein: 1 },                       out: 'fleisch',        n: 2, t: 6, from: 'blt' },
   { m: 'raeucherei',   in: { fleisch: 1, holz: 1 },              out: 'speck',          n: 1, t: 6, from: 'blt' },
@@ -140,7 +148,7 @@ export const RECIPES = [
   // Kapitel 4 – Club-Sandwich
   { m: 'metzgerei',    in: { haehnchen: 1 },                     out: 'haehnchenbrust', n: 2, t: 6, from: 'club' },
   { m: 'muehle',       in: { salzbrocken: 1 },                   out: 'salz',           n: 1, t: 4, from: 'club' },
-  { m: 'grill',        in: { haehnchenbrust: 1, salz: 1 },       out: 'grillhaehnchen', n: 1, t: 6, from: 'club' },
+  { m: 'grill',        in: { haehnchenbrust: 1, salz: 1, kohle: 1 }, out: 'grillhaehnchen', n: 1, t: 6, from: 'club' },
   { m: 'saftpresse',   in: { apfel: 1 },                         out: 'apfelsaft',      n: 1, t: 4, from: 'club' },
   { m: 'gaerfass',     in: { apfelsaft: 1 },                     out: 'essig',          n: 1, t: 8, from: 'club' },
   { m: 'einmachstation', in: { gurke: 1, essig: 1, salz: 1 },    out: 'essiggurke',     n: 1, t: 6, from: 'club' },
@@ -153,11 +161,12 @@ export const RECIPES = [
   { m: 'papierfabrik', in: { holz: 1, wasser: 1 },               out: 'papier',         n: 1, t: 5, from: 'weltrekord' },
   { m: 'faltmaschine', in: { papier: 2 },                        out: 'sandwichbox',    n: 1, t: 5, from: 'weltrekord' },
   // Bonus – Quietscheente (eigener Rezeptsatz)
+  { m: 'schmelze',     in: { erz: 1, kohle: 1 },                 out: 'eisen',          n: 1, t: 6, from: 'ente' },
   { m: 'raffinerie',   in: { rohoel: 1 },                        out: 'plastik',        n: 1, t: 5, from: 'ente' },
   { m: 'formpresse',   in: { plastik: 1 },                       out: 'koerper',        n: 1, t: 5, from: 'ente' },
   { m: 'formpresse',   in: { gummi: 1 },                         out: 'kopf',           n: 1, t: 5, from: 'ente' },
   { m: 'schneider',    in: { holz: 1 },                          out: 'schnabel',       n: 1, t: 4, from: 'ente' },
-  { m: 'ofen',         in: { sand: 1 },                          out: 'glas',           n: 1, t: 6, from: 'ente' },
+  { m: 'ofen',         in: { sand: 1, kohle: 1 },                out: 'glas',           n: 1, t: 6, from: 'ente' },
   { m: 'schneider',    in: { glas: 1 },                          out: 'augen',          n: 2, t: 4, from: 'ente' },
   { m: 'mixer',        in: { gummi: 1, plastik: 1 },             out: 'quietscher',     n: 1, t: 5, from: 'ente' },
   { m: 'mixer',        in: { pigment: 1, rohoel: 1 },            out: 'farbe',          n: 1, t: 5, from: 'ente' },
@@ -171,20 +180,23 @@ export const CAMPAIGN = ['butterbrot', 'kaesetoast', 'blt', 'club', 'weltrekord'
 // stars: Spielzeit in Sekunden für ★★★ und ★★ (alles darüber gibt ★)
 export const CHAPTERS = {
   butterbrot: {
+    budget: 100,
     title: 'Das Butterbrot', short: 'Butterbrot', grid: 16, stars: [240, 480], tutorial: true,
     story: 'Ein Kunde bestellt ein Butterbrot. Ein einziges. Die Firmenleitung hält es für angemessen, dafür eine vollautomatische Fabrik zu errichten.',
-    tip: 'Folge den Schritten unten. Der weiße Pfeil auf jedem Gebäude zeigt, wohin es seine Produkte abgibt.',
+    tip: 'Bauen kostet Eisen (oben im Kopf, Abreißen gibt es zurück) – für dieses Kapitel reicht das Startkapital. Folge den Schritten oben. Der weiße Pfeil auf jedem Gebäude zeigt, wohin es seine Produkte abgibt.',
     unlock: ['belt', 'sink', 'muelleimer', 'weizenfeld', 'kuhweide', 'muehle', 'ofen', 'butterfass'],
     parts: [{ item: 'brot', need: 4 }, { item: 'butter', need: 4 }],
   },
   kaesetoast: {
+    budget: 120,
     title: 'Der Käsetoast', short: 'Käsetoast', grid: 22, stars: [540, 960],
     story: 'Der Kunde war begeistert und will jetzt einen Käsetoast. Leider weiß niemand, wie man Toastbrot macht. Zeit, Hefe zu züchten.',
-    tip: 'Ein Verteiler teilt einen Strom auf – praktisch, wenn eine Kuhweide Butterfass und Käserei gleichzeitig beliefern soll. Maschinen mit mehreren Zutaten nehmen sie von allen Seiten an.',
-    unlock: ['splitter', 'brunnen', 'zuckerruebenfeld', 'zuckerfabrik', 'gaerfass', 'knetmaschine', 'schneider', 'kaeserei'],
+    tip: 'Ab jetzt braucht der Ofen Kohle. Und Bauen kostet Eisen: Erzmine + Kohlemine → Schmelzofen → Materiallager füllt dein Baukonto. Ein Verteiler teilt einen Strom auf – praktisch, wenn eine Kuhweide Butterfass und Käserei gleichzeitig beliefern soll. Maschinen mit mehreren Zutaten nehmen sie von allen Seiten an.',
+    unlock: ['splitter', 'lager', 'kohlemine', 'erzmine', 'schmelze', 'brunnen', 'zuckerruebenfeld', 'zuckerfabrik', 'gaerfass', 'knetmaschine', 'schneider', 'kaeserei'],
     parts: [{ item: 'toastscheibe', need: 8 }, { item: 'kaese', need: 4 }, { item: 'butter', need: 4 }],
   },
   blt: {
+    budget: 140,
     title: 'Das BLT', short: 'BLT', grid: 28, stars: [840, 1500],
     story: 'Bacon, Lettuce, Tomato. Die Marketingabteilung findet, „Speck, Salat, Tomate" klinge nicht international genug. Dafür brauchen wir jetzt Schweine.',
     tip: 'Brücken lassen Items über andere Bänder springen: eine Brücke als Eingang, eine zweite (gleiche Richtung) bis zu 4 Felder weiter als Ausgang.',
@@ -192,6 +204,7 @@ export const CHAPTERS = {
     parts: [{ item: 'toastscheibe', need: 8 }, { item: 'speck', need: 6 }, { item: 'salat', need: 4 }, { item: 'tomatenscheibe', need: 6 }, { item: 'mayo', need: 4 }],
   },
   club: {
+    budget: 170,
     title: 'Das Club-Sandwich', short: 'Club', grid: 34, stars: [1260, 2100],
     story: 'Drei Etagen. Ein Zahnstocher. Null Kompromisse. Der Club-Sandwich-Club hat angefragt und erwartet Perfektion – inklusive selbst eingelegter Gurken.',
     tip: 'Der Sortierer schickt eine Item-Sorte zur Seite und alles andere geradeaus. So kannst du gemischte Bänder trennen. F über einem Sortierer ändert den Filter.',
@@ -200,6 +213,7 @@ export const CHAPTERS = {
       { item: 'tomatenscheibe', need: 4 }, { item: 'essiggurke', need: 4 }, { item: 'mayo', need: 4 }, { item: 'zahnstocher', need: 4 }],
   },
   weltrekord: {
+    budget: 220,
     title: 'Das Weltrekord-Sandwich', short: 'Weltrekord', grid: 42, stars: [2100, 3600],
     story: 'Das Rekord-Komitee ist unterwegs. Baue das größte Sandwich der Welt – mit allem, was die Fabrik je gelernt hat, plus Senf, Ketchup und einer Box, die groß genug ist.',
     tip: 'Viel hilft viel: Baue starke Ketten mehrfach und verteile sie. Mülleimer am Ende von Überlauf-Bändern verhindern Staus.',
@@ -210,10 +224,11 @@ export const CHAPTERS = {
       { item: 'zahnstocher', need: 4 }, { item: 'sandwichbox', need: 4 }],
   },
   ente: {
+    budget: 150,
     title: 'Bonus: Die Riesen-Quietscheente', short: 'Bonus: Ente', grid: 28, stars: [900, 1680], bonus: true,
     story: 'Eine kurze Pause vom Sandwich: Die Badewannen-Abteilung braucht eine Riesen-Quietscheente. Rückfragen werden nicht beantwortet.',
     tip: 'Hier gelten eigene Rezepte. Schau ins Rezeptbuch (B), wenn du nicht weiterweißt.',
-    unlock: ['belt', 'sink', 'muelleimer', 'splitter', 'bruecke', 'sortierer', 'oelquelle', 'pigmentmine', 'sandgrube', 'gummibaum', 'wald', 'brunnen',
+    unlock: ['belt', 'sink', 'muelleimer', 'splitter', 'bruecke', 'sortierer', 'oelquelle', 'pigmentmine', 'sandgrube', 'gummibaum', 'wald', 'brunnen', 'lager', 'kohlemine', 'erzmine', 'schmelze',
       'raffinerie', 'formpresse', 'ofen', 'schneider', 'mixer', 'papierfabrik'],
     parts: [{ item: 'koerper', need: 3 }, { item: 'kopf', need: 3 }, { item: 'schnabel', need: 3 }, { item: 'augen', need: 3 },
       { item: 'quietscher', need: 3 }, { item: 'farbe', need: 3 }, { item: 'lack', need: 3 }, { item: 'papier', need: 2 }],
@@ -237,6 +252,12 @@ export function chapterContent(id) {
   const order = ['logistik', 'quelle', 'maschine'];
   const list = [...buildings].sort((a, b) => order.indexOf(BUILDINGS[a].cat) - order.indexOf(BUILDINGS[b].cat));
   return { id, chapter: ch, buildings: list, isNew, recipes, byMachine, producer, parts: ch.parts };
+}
+
+// Baukosten in Eisen. Abreißen gibt alles zurück.
+const COSTS = { belt: 1, splitter: 3, bruecke: 4, sortierer: 5, muelleimer: 2, sink: 5, lager: 5 };
+export function costOf(kind) {
+  return COSTS[kind] ?? (BUILDINGS[kind].cat === 'quelle' ? 6 : 12);
 }
 
 export const TICK = 0.25; // Sekunden pro Simulationstakt
