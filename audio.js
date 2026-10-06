@@ -1,6 +1,7 @@
 // Winzige WebAudio-Effekte, ohne Dateien. Der Kontext startet erst nach der ersten Interaktion.
 let ctx = null;
 let muted = false;
+let volume = 1;
 
 function ac() {
   if (!ctx) {
@@ -22,7 +23,7 @@ function tone(freq, dur = 0.12, type = 'sine', vol = 0.08, delay = 0, slideTo = 
   o.type = type;
   o.frequency.setValueAtTime(freq, t);
   if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
-  g.gain.setValueAtTime(vol, t);
+  g.gain.setValueAtTime(Math.max(0.0001, vol * volume), t);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(g).connect(a.destination);
   o.start(t);
@@ -38,4 +39,5 @@ export const sfx = {
   squeak:  () => { tone(900, 0.12, 'square', 0.05, 0, 1500); tone(1300, 0.1, 'square', 0.05, 0.14, 800); },
   setMuted: (v) => { muted = v; },
   isMuted: () => muted,
+  setVolume: (v) => { volume = v; },
 };

@@ -4,7 +4,7 @@ import { BUILDINGS, TIERS, isGenerator } from './data.js';
 export const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // +x, +z, -x, -z
 export const MACHINE_BUFFER = 2;   // so viele Items je Zutat puffert eine Maschine über den Rezeptbedarf hinaus
 export const BRIDGE_RANGE = 4;     // so weit (in Feldern) springt ein Item zwischen zwei Brücken
-const CARRIERS = new Set(['belt', 'splitter', 'bruecke', 'sortierer']);
+const CARRIERS = new Set(['belt', 'expressband', 'splitter', 'bruecke', 'sortierer']);
 
 export const isCarrier = (kind) => CARRIERS.has(kind);
 export const isSource = (kind) => BUILDINGS[kind]?.cat === 'quelle';
@@ -21,6 +21,7 @@ export class Factory {
     this.cells = new Array(size * size).fill(null);
     this.list = [];
     this.tickNo = 0;
+    this.sub = 0;
     this.produced = {};
     this.parts = new Set(content.parts.map(p => p.item));
     this.speed = { source: 1, machine: 1 };   // Werkstatt-Upgrades
@@ -63,7 +64,7 @@ export class Factory {
   }
 
   spawn(cell, type) {
-    const item = { id: nextItemId++, type, stamp: this.tickNo };
+    const item = { id: nextItemId++, type, stamp: this.sub };
     this.produced[type] = (this.produced[type] || 0) + 1;
     if (this.hooks.spawn) this.hooks.spawn(item, cell);
     return item;
@@ -102,6 +103,7 @@ export class Factory {
   accepts(dest, type, from) {
     switch (dest.kind) {
       case 'belt':
+      case 'expressband':
       case 'bruecke':
       case 'sortierer':
         return this.front(dest) !== from && this.carrierFree(dest, from); // nie gegen die Fahrtrichtung
@@ -114,7 +116,7 @@ export class Factory {
   }
 
   give(dest, item, from) {
-    item.stamp = this.tickNo;
+    item.stamp = this.sub;
     if (isCarrier(dest.kind)) {
       dest.item = item;
       dest.lastFrom = from;
@@ -156,6 +158,7 @@ export class Factory {
 
   tick() {
     this.tickNo++;
+    this.sub = this.tickNo * 2;
     const list = this.list;
 
     // Energienetz: Bedarf der laufenden angetriebenen Gebäude gegen Erzeuger, die nur bei Bedarf Brennstoff verbrauchen
@@ -197,22 +200,30 @@ export class Factory {
       }
     }
 
-    // Bewegung: so lange Durchläufe, bis sich nichts mehr bewegt; stamp verhindert Doppelschritte im selben Takt
+    // Bewegung in zwei Halbschritten: im ersten bewegt sich alles, im zweiten nur, was auf Expressbändern liegt
+    // (so laufen Expressbänder doppelt so schnell). stamp verhindert Doppelschritte im selben Halbschritt.
+    this.sub = this.tickNo * 2;
+    this.move(list);
+    this.sub = this.tickNo * 2 + 1;
+    this.move(list.filter(c => c.kind === 'expressband'));
+
+    for (const c of list) {
+      const item = isCarrier(c.kind) ? c.item : c.out;
+      c.blocked = item && item.stamp < this.tickNo * 2 ? c.blocked + 1 : 0;
+    }
+  }
+
+  move(cells) {
     for (let pass = 0; pass < 64; pass++) {
       let moved = false;
-      for (const c of list) {
+      for (const c of cells) {
         const slot = isCarrier(c.kind) ? 'item' : (isSource(c.kind) || isMachine(c.kind)) ? 'out' : null;
         const item = slot && c[slot];
-        if (!item || item.stamp === this.tickNo) continue;
+        if (!item || item.stamp === this.sub) continue;
         const dest = this.route(c, item);
         if (dest) { c[slot] = null; this.give(dest, item, c); moved = true; }
       }
       if (!moved) break;
-    }
-
-    for (const c of list) {
-      const item = isCarrier(c.kind) ? c.item : c.out;
-      c.blocked = item && item.stamp !== this.tickNo ? c.blocked + 1 : 0;
     }
   }
 

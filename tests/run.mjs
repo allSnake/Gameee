@@ -151,6 +151,20 @@ function run(f, ticks) { for (let i = 0; i < ticks; i++) f.tick(); }
   ok(c.producer.weizen.machine === 'getreidesynth' && c.producer.tomate.machine === 'fruchtsynth' && c.producer.zucker.machine === 'kristallisator', 'Synthese-Hersteller falsch');
   ok(chapterContent('weltraum').producer.weizen.source === 'weizenfeld', 'Weltraum-Kapitel verliert Weizenfeld');
 }
+{ // Expressband: doppelt so schnell wie ein normales Band
+  const time = (kind) => {
+    const f = new Factory(30, content);
+    let at = null;
+    f.hooks.trash = () => { if (at === null) at = f.tickNo; };
+    f.place('weizenfeld', 0, 1, 0);
+    for (let x = 1; x < 25; x++) f.place(kind, x, 1, 0);
+    f.place('muelleimer', 25, 1, 0);
+    run(f, 200);
+    return at;
+  };
+  const slow = time('belt'), fast = time('expressband');
+  ok(fast < slow * 0.7, `Expressband nicht schneller (${fast} vs ${slow} Takte)`);
+}
 { // Stau: Endmontage nimmt keine Nicht-Teile an
   const f = new Factory(8, chapterContent('butterbrot'));
   f.place('weizenfeld', 0, 0, 0); f.place('belt', 1, 0, 0); f.place('sink', 2, 0, 0);

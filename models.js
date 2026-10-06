@@ -78,6 +78,14 @@ function logisticsDecor(kind, g, add) {
       add('box', 0x5c6b7d, 0.9, 0.04, 0.5, 0, 0.14, 0, {}, false);
       g.add(arrow(add, 0.3, 0.22, 0xffd166));
       break;
+    case 'expressband':
+      add('box', 0x2a3f5a, 0.94, 0.12, 0.94, 0, 0.06, 0, {}, false);
+      add('box', 0x3f7fbf, 0.9, 0.04, 0.5, 0, 0.14, 0, {}, false);
+      add('box', 0x7fd0ff, 0.9, 0.02, 0.04, 0, 0.165, 0.27, { emissive: 0x3fa9ff, emissiveIntensity: 0.8 }, false);
+      add('box', 0x7fd0ff, 0.9, 0.02, 0.04, 0, 0.165, -0.27, { emissive: 0x3fa9ff, emissiveIntensity: 0.8 }, false);
+      g.add(arrow(add, 0.12, 0.22, 0x9be7ff));
+      g.add(arrow(add, 0.36, 0.22, 0x9be7ff));
+      break;
     case 'splitter':
       add('box', 0x4a5666, 0.94, 0.14, 0.94, 0, 0.07, 0, {}, false);
       add('cyl', 0x7d8fa3, 0.5, 0.12, 0.5, 0, 0.18, 0);

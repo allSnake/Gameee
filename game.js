@@ -21,7 +21,9 @@ scene.background = new THREE.Color(0xdde3e9);
 const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 400);
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
+controls.zoomToCursor = true;
+controls.screenSpacePanning = false;
 controls.maxPolarAngle = Math.PI / 2.1;
 controls.minDistance = 5;
 controls.enableDamping = true;
@@ -338,7 +340,7 @@ function buildShowcase() {
 }
 
 // ================================================================ Simulation & Animation
-const ITEM_Y = { belt: 0.28, splitter: 0.32, sortierer: 0.34, bruecke: 0.72 };
+const ITEM_Y = { belt: 0.28, expressband: 0.28, splitter: 0.32, sortierer: 0.34, bruecke: 0.72 };
 const tmp = new THREE.Vector3();
 
 const statSnaps = [];
@@ -536,7 +538,7 @@ let lastPaint = null;
 function paint(cell, ev) {
   if (ev.shiftKey || tool === 'erase') { removeBuilding(cell.x, cell.z); lastPaint = cell; return; }
   if (tool === 'upgrade') { upgradeCell(factory.at(cell.x, cell.z)); lastPaint = cell; renderInfo(); return; }
-  if ((tool === 'belt' || tool === 'bruecke') && lastPaint && (lastPaint.x !== cell.x || lastPaint.z !== cell.z)) {
+  if ((tool === 'belt' || tool === 'expressband' || tool === 'bruecke') && lastPaint && (lastPaint.x !== cell.x || lastPaint.z !== cell.z)) {
     // Beim Ziehen zeigt das vorherige Band zum neuen
     const d = DIRS.findIndex(([ax, az]) => ax === cell.x - lastPaint.x && az === cell.z - lastPaint.z);
     if (d >= 0) {
@@ -576,6 +578,14 @@ addEventListener('pointerup', () => {
   painting = false; lastPaint = null; endStroke();
 });
 canvas.addEventListener('contextmenu', ev => ev.preventDefault());
+let rightDown = null;
+canvas.addEventListener('pointerdown', ev => { if (ev.button === 2) rightDown = { x: ev.clientX, y: ev.clientY, t: performance.now() }; });
+canvas.addEventListener('pointerup', ev => {
+  if (ev.button !== 2 || !rightDown) return;
+  const quick = Math.hypot(ev.clientX - rightDown.x, ev.clientY - rightDown.y) < 5 && performance.now() - rightDown.t < 300;
+  rightDown = null;
+  if (quick && tool !== 'belt') setTool('belt');
+});
 
 const keys = new Set();
 addEventListener('keydown', ev => {
@@ -584,7 +594,13 @@ addEventListener('keydown', ev => {
     if (k === 'escape' || k === 'enter') { ev.target.blur(); if (ev.target.id === 'search' && k === 'enter' && tabTools()[0]) setTool(tabTools()[0]); }
     return;
   }
-  if (k === 'escape') { overlayOpen ? closeOverlayIfAllowed() : showMenu(); return; }
+  if (k === 'escape') {
+    if (overlayOpen) closeOverlayIfAllowed();
+    else if (selStart) { selStart = null; selBox.visible = false; }
+    else if (tool !== 'belt') setTool('belt');
+    else showMenu();
+    return;
+  }
   if (k === '/' && !overlayOpen) { ev.preventDefault(); $('search').focus(); return; }
   if (k === 'h' && !ev.repeat) { if (overlayKind === 'help') closeOverlay(); else if (!overlayOpen) showHelp(); return; }
   if (k === 'b' && !ev.repeat) { if (overlayKind === 'book') closeOverlay(); else if (!overlayOpen) showBook(); return; }
@@ -647,7 +663,7 @@ function panCamera(dt) {
   if (keys.has('s')) v.sub(fwd);
   if (keys.has('d')) v.add(rightV);
   if (keys.has('a')) v.sub(rightV);
-  v.multiplyScalar((10 + N * 0.4) * dt);
+  v.multiplyScalar((10 + N * 0.4) * dt * settings.camSpeed);
   camera.position.add(v);
   controls.target.add(v);
 }
@@ -843,7 +859,7 @@ function closeOverlayIfAllowed() {
   if (overlayKind === 'menu' && !chapterId) return;
   closeOverlay();
 }
-$('overlay').addEventListener('click', ev => { if (ev.target === $('overlay') && ['book', 'help', 'stats', 'shop'].includes(overlayKind)) closeOverlay(); });
+$('overlay').addEventListener('click', ev => { if (ev.target === $('overlay') && ['book', 'help', 'stats', 'shop', 'settings'].includes(overlayKind)) closeOverlay(); });
 const bind = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', fn); };
 
 function isUnlocked(id) {
@@ -895,11 +911,12 @@ function showMenu() {
   });
   bind('menu-back', closeOverlay);
   bind('reset-all', () => {
-    if (!confirm('Wirklich alle Spielstände und Sterne löschen?')) return;
-    try { Object.keys(localStorage).filter(k => k.startsWith(SAVE_PREFIX)).forEach(k => localStorage.removeItem(k)); } catch { /* egal */ }
-    meta = { completed: {} };
-    chapterId = null;
-    location.reload();
+    askConfirm('Wirklich alle Spielstände und Sterne löschen?', 'Alles löschen', () => {
+      try { Object.keys(localStorage).filter(k => k.startsWith(SAVE_PREFIX)).forEach(k => localStorage.removeItem(k)); } catch { /* egal */ }
+      meta = { completed: {} };
+      chapterId = null;
+      location.reload();
+    });
   });
 }
 
@@ -930,7 +947,7 @@ function renderMenuSide() {
       ${hasSave || id === chapterId ? '<button class="btn" id="side-fresh">Von vorn beginnen</button>' : ''}`
       : `<p class="sub">🔒 ${ch.bonus ? 'Wird nach Kapitel 1 freigeschaltet.' : 'Schließe erst das vorherige Kapitel ab.'}</p>`}`;
   bind('side-play', () => playChapter(id));
-  bind('side-fresh', () => { if (confirm('Spielstand dieses Kapitels verwerfen und neu beginnen?')) playChapter(id, true); });
+  bind('side-fresh', () => askConfirm('Spielstand dieses Kapitels verwerfen und neu beginnen?', 'Neu beginnen', () => playChapter(id, true)));
 }
 
 function showIntro() {
@@ -1088,6 +1105,55 @@ function showHelp() {
   bind('help-close', closeOverlay);
 }
 
+// Bestätigung im Spiel statt Browser-Dialog (der in eingebetteten Ansichten blockiert ist)
+function askConfirm(text, yesLabel, onYes) {
+  const box = document.createElement('div');
+  box.className = 'confirm';
+  box.innerHTML = `<div class="confirm-card"><p>${text}</p><div class="actions"><button class="btn" data-a="no">Abbrechen</button>
+    <button class="btn primary" data-a="yes">${yesLabel}</button></div></div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', ev => {
+    const a = ev.target.closest('[data-a]')?.dataset.a;
+    if (!a && ev.target !== box) return;
+    box.remove();
+    if (a === 'yes') onYes();
+  });
+  box.querySelector('[data-a="yes"]').focus();
+}
+
+// ================================================================ Einstellungen
+const settings = { shadows: true, quality: 'hoch', volume: 0.8, camSpeed: 1, ...(() => {
+  try { return JSON.parse(localStorage.getItem('absurd-industries.v2.settings')) || {}; } catch { return {}; }
+})() };
+
+function applySettings() {
+  renderer.shadowMap.enabled = settings.shadows;
+  sun.castShadow = settings.shadows;
+  scene.traverse(o => { if (o.material) o.material.needsUpdate = true; });
+  renderer.setPixelRatio(settings.quality === 'hoch' ? Math.min(devicePixelRatio, 2) : 1);
+  renderer.setSize(innerWidth, innerHeight);
+  sfx.setVolume(settings.volume);
+  try { localStorage.setItem('absurd-industries.v2.settings', JSON.stringify(settings)); } catch { /* optional */ }
+}
+
+function showSettings() {
+  openOverlay('settings', `<h2>Einstellungen</h2>
+    <div class="settings">
+      <span>Schatten<br><span class="sub">Aus = deutlich flüssiger auf schwächeren Rechnern</span></span><input type="checkbox" id="set-shadows" ${settings.shadows ? 'checked' : ''}>
+      <span>Grafikqualität<br><span class="sub">„Normal“ rendert in einfacher Auflösung</span></span>
+      <select id="set-quality" class="btn"><option ${settings.quality === 'hoch' ? 'selected' : ''}>hoch</option><option ${settings.quality === 'normal' ? 'selected' : ''}>normal</option></select>
+      <span>Lautstärke</span><input type="range" id="set-volume" min="0" max="1" step="0.05" value="${settings.volume}">
+      <span>Kameratempo (WASD)</span><input type="range" id="set-cam" min="0.4" max="2.5" step="0.1" value="${settings.camSpeed}">
+    </div>
+    <div class="actions"><button class="btn primary" id="set-close">Fertig</button></div>`);
+  $('set-shadows').addEventListener('change', e => { settings.shadows = e.target.checked; applySettings(); });
+  $('set-quality').addEventListener('change', e => { settings.quality = e.target.value; applySettings(); });
+  $('set-volume').addEventListener('input', e => { settings.volume = Number(e.target.value); applySettings(); });
+  $('set-volume').addEventListener('change', () => sfx.partDone());
+  $('set-cam').addEventListener('input', e => { settings.camSpeed = Number(e.target.value); applySettings(); });
+  bind('set-close', closeOverlay);
+}
+
 // ================================================================ Werkstatt
 const UPGRADES = {
   source:  { name: 'Turbo-Quellen',  desc: 'Alle Quellen produzieren 25 % schneller.' },
@@ -1218,10 +1284,13 @@ function loadChapter(id, { fresh = false } = {}) {
   else toast(`${content.chapter.title} – weiter geht's`);
 }
 
-function runDemo() {
+function runDemo(force = false) {
   const plan = planChapter(content, N, BUILDINGS);
   if (!plan) { toast('Die Demo passt leider nicht aufs Feld.'); return; }
-  if (factory.list.length && !params.has('demo') && !confirm('Die Demo reißt deine Fabrik in diesem Kapitel ab. Trotzdem starten?')) return;
+  if (factory.list.length && !params.has('demo') && !force) {
+    askConfirm('Die Demo reißt deine Fabrik in diesem Kapitel ab. Trotzdem starten?', 'Demo starten', () => runDemo(true));
+    return;
+  }
   for (const c of [...factory.list]) removeBuilding(c.x, c.z, { silent: true });
   progress = newProgress();
   progress.started = true;
@@ -1246,6 +1315,7 @@ bind('btn-book', () => showBook());
 bind('btn-shop', () => showShop());
 bind('btn-stats', () => showStats());
 bind('btn-help', () => showHelp());
+bind('btn-settings', () => showSettings());
 bind('btn-mute', () => {
   sfx.setMuted(!sfx.isMuted());
   $('btn-mute').querySelector('.ic').textContent = sfx.isMuted() ? '🔇' : '🔊';
@@ -1289,6 +1359,7 @@ addEventListener('resize', () => {
 });
 
 // ================================================================ Start
+applySettings();
 const startId = params.get('chapter');
 if (startId && CHAPTERS[startId]) {
   loadChapter(startId, { fresh: params.has('fresh') });
@@ -1308,3 +1379,4 @@ window.__game = {
   screenOf(x, z) { const v = cellPos(x, z).project(camera); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight }; },
 };
 frame();
+setTimeout(() => { if (!overlayOpen) toast("Tipp: H zeigt die Steuerung, B das Rezeptbuch", 3500); }, 1500);

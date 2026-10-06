@@ -84,6 +84,7 @@ export const ITEMS = {
 // cat: logistik | quelle | maschine. Quellen erzeugen alle `ticks` Takte ein Item und geben es nach vorn ab.
 export const BUILDINGS = {
   belt:       { cat: 'logistik', name: 'Förderband', color: '#4a5666', info: 'Transportiert Items in Pfeilrichtung. Nimmt von hinten und von den Seiten an.' },
+  expressband: { cat: 'logistik', name: 'Expressband', color: '#3f7fbf', info: 'Elektrisch angetriebenes Band: transportiert doppelt so schnell wie das normale Förderband.' },
   splitter:   { cat: 'logistik', name: 'Verteiler',  color: '#7d8fa3', info: 'Verteilt Items abwechselnd nach vorn, links und rechts.' },
   bruecke:    { cat: 'logistik', name: 'Brücke',     color: '#c08552', info: 'Items springen bis zu 4 Felder weit zur nächsten Brücke mit gleicher Richtung – über alles drüber.' },
   sortierer:  { cat: 'logistik', name: 'Sortierer',  color: '#3fb6c8', info: 'Eine Item-Sorte geht zur Seite (blauer Pfeil), alles andere geradeaus. Lernt die Sorte vom ersten Item, F ändert den Filter.' },
@@ -311,7 +312,7 @@ export const CHAPTERS = {
     title: 'Das Weltrekord-Sandwich', short: 'Weltrekord', grid: 42, stars: [2100, 3600],
     story: 'Das Rekord-Komitee ist unterwegs. Baue das größte Sandwich der Welt – mit allem, was die Fabrik je gelernt hat, plus Senf, Ketchup und einer Box, die groß genug ist.',
     tip: 'Viel hilft viel: Baue starke Ketten mehrfach und verteile sie. Mülleimer am Ende von Überlauf-Bändern verhindern Staus.',
-    unlock: ['kraftwerk', 'senffeld', 'kraeutergarten', 'kochtopf', 'papierfabrik', 'faltmaschine'],
+    unlock: ['kraftwerk', 'expressband', 'senffeld', 'kraeutergarten', 'kochtopf', 'papierfabrik', 'faltmaschine'],
     parts: [{ item: 'toastscheibe', need: 24 }, { item: 'butter', need: 8 }, { item: 'kaese', need: 8 }, { item: 'speck', need: 8 },
       { item: 'grillhaehnchen', need: 6 }, { item: 'salat', need: 8 }, { item: 'tomatenscheibe', need: 8 }, { item: 'essiggurke', need: 6 },
       { item: 'mayo', need: 6 }, { item: 'senf', need: 6 }, { item: 'ketchup', need: 6 }, { item: 'gewuerz', need: 6 },
@@ -387,7 +388,7 @@ export function chapterContent(id) {
 }
 
 // Baukosten in Eisen. Abreißen gibt alles zurück.
-const COSTS = { belt: 1, splitter: 3, bruecke: 4, sortierer: 5, muelleimer: 2, sink: 5, lager: 5 };
+const COSTS = { belt: 1, expressband: 3, splitter: 3, bruecke: 4, sortierer: 5, muelleimer: 2, sink: 5, lager: 5 };
 export function costOf(kind) {
   const gen = { dampfkessel: 15, kraftwerk: 20, solarpark: 25 };
   if (gen[kind]) return gen[kind];

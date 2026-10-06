@@ -27,6 +27,11 @@ Stärke + Protein → **Weizen**. Danach läuft die bekannte Kette weiter: Mühl
 Kapitel werden nacheinander freigeschaltet, Gebäude und Rezepte bleiben erhalten. Das Bonus-Kapitel öffnet sich nach Kapitel 1.
 Für jedes Kapitel gibt es 1–3 Sterne je nach Spielzeit (ab dem ersten gebauten Gebäude).
 
+## Online spielen
+
+Die aktuelle Version ist als Claude-Artefakt veröffentlicht (privat, über das Teilen-Menü freigebbar).
+Eine eigenständige Web-Version für beliebiges Hosting baut `python3 scripts/build-web.py` nach `dist/`.
+
 ## Starten
 
 Kein Build nötig, Three.js liegt unter `vendor/three/`.
@@ -47,6 +52,9 @@ URL-Parameter zum Ausprobieren:
 - **Bauleiste unten:** Kategorien, Vorschaubilder aller Gebäude mit Preis, Suche (Taste `/`, findet auch über Produkte – „gurk“ findet Gurkenbeet und Einmachstation).
 - **Rezeptbuch (B):** links alle Items mit Suche (Bestellung, Zwischenprodukte, Rohstoffe), rechts Herstellung, Verwendung und der komplette Weg – alles anklickbar.
 - **Blaupausen (C / V):** Rechteck über eine fertige Kette ziehen kopiert sie samt Richtung, Filter und Antriebsstufe; die Vorschau folgt der Maus, R dreht, Klick baut (kostet Eisen, Strg+Z macht es rückgängig).
+- **Expressband** (ab Elektrifizierung): transportiert doppelt so schnell.
+- **Optionen:** Schatten, Grafikqualität, Lautstärke, Kameratempo – gespeichert im Browser.
+- **Esc** oder kurzer Rechtsklick bricht das aktive Werkzeug ab; Mausrad zoomt zum Mauszeiger, mittlere Maustaste verschiebt.
 - **Hilfe (H):** alle Tasten auf einen Blick.
 - Bewusst minimalistischer Look: matte Farben, heller Boden, weiche Schatten.
 
